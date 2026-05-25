@@ -137,14 +137,14 @@ contract FreightEscrow {
     event CCTPFundingReceived(uint256 indexed shipmentId, uint32 sourceDomain, bytes32 sourceTxHash, uint256 amount);
 
     modifier onlyOwner() {
-        require(msg.sender == owner, "Only contract owner can call this");
+        require(msg.sender == owner, "Only owner");
         _;
     }
 
     modifier onlyOracle() {
         // In a production app, this would check if msg.sender is a registered Oracle or IoT Gateway.
         // For our hackathon prototype, the owner acts as the Oracle.
-        require(msg.sender == owner, "Only authorized Oracle/Owner can call this");
+        require(msg.sender == owner, "Only Oracle/Owner");
         _;
     }
 
@@ -166,8 +166,8 @@ contract FreightEscrow {
     function setIotGateway(uint256 _shipmentId, address _gateway) external {
         Shipment memory s = shipments[_shipmentId];
         require(s.exists, "Shipment does not exist");
-        require(msg.sender == s.buyer || msg.sender == owner, "Only buyer or owner can set IoT gateway");
-        require(s.status == ShipmentStatus.Created, "Can only set gateway before transit");
+        require(msg.sender == s.buyer || msg.sender == owner, "Only buyer/owner");
+        require(s.status == ShipmentStatus.Created, "Set before transit");
         require(_gateway != address(0), "Invalid gateway address");
         iotGateway[_shipmentId] = _gateway;
         emit IoTGatewayRegistered(_shipmentId, _gateway);
@@ -185,17 +185,17 @@ contract FreightEscrow {
         address _token,
         uint256 _poId
     ) external returns (uint256) {
-        require(passportContract != address(0), "Passport contract not set");
-        require(_supplier != address(0) && _carrier != address(0), "Invalid addresses");
-        require(_cargoValue > 0 && _shippingFee > 0, "Amounts must be greater than zero");
-        require(_token == usdcToken || _token == eurcToken, "Only USDC or EURC supported");
+        require(passportContract != address(0), "No passport");
+        require(_supplier != address(0) && _carrier != address(0), "Bad addresses");
+        require(_cargoValue > 0 && _shippingFee > 0, "Bad amounts");
+        require(_token == usdcToken || _token == eurcToken, "Bad token");
 
         uint256 totalEscrowNeeded = _cargoValue + _shippingFee;
         
         // Transfer USDC/EURC from buyer to this contract
         require(
             IERC20(_token).transferFrom(msg.sender, address(this), totalEscrowNeeded),
-            "Escrow deposit failed"
+            "Deposit failed"
         );
 
         uint256 shipmentId = nextShipmentId++;
@@ -243,10 +243,10 @@ contract FreightEscrow {
             POLoan storage po = poLoans[_poId];
             require(po.buyer == msg.sender, "PO buyer mismatch");
             require(po.supplier == _supplier, "PO supplier mismatch");
-            require(po.cargoValue == _cargoValue, "PO cargo value mismatch");
+            require(po.cargoValue == _cargoValue, "PO cargo mismatch");
             require(po.token == _token, "PO token mismatch");
-            require(po.funded, "PO not funded yet");
-            require(!po.repaid, "PO already repaid");
+            require(po.funded, "PO not funded");
+            require(!po.repaid, "PO repaid");
 
             po.repaid = true;
             shipmentPOLoans[shipmentId] = _poId;
@@ -255,7 +255,7 @@ contract FreightEscrow {
             // Repay investor loan immediately
             require(
                 IERC20(_token).transfer(po.investor, po.repaymentAmount),
-                "PO repayment to investor failed"
+                "PO repayment failed"
             );
             
             // Set releasedSupplierAmount to the loan repayment amount since they already received funds
@@ -277,8 +277,8 @@ contract FreightEscrow {
 
     function triggerMilestoneDeparture(uint256 _shipmentId, int256 _temp) external onlyOracle {
         Shipment storage s = shipments[_shipmentId];
-        require(s.exists, "Shipment does not exist");
-        require(s.status == ShipmentStatus.Created, "Invalid status transition");
+        require(s.exists, "No shipment");
+        require(s.status == ShipmentStatus.Created, "Bad status");
 
         s.status = ShipmentStatus.InTransit;
         
@@ -297,10 +297,10 @@ contract FreightEscrow {
 
     function triggerMilestoneSingapore(uint256 _shipmentId, int256 _temp) external onlyOracle {
         Shipment storage s = shipments[_shipmentId];
-        require(s.exists, "Shipment does not exist");
-        require(s.status == ShipmentStatus.InTransit, "Invalid status");
-        require(!singaporeMilestonePaid[_shipmentId], "Singapore milestone already paid");
-        require(!shipmentHasPOLoan[_shipmentId], "Singapore payout disabled for PO financed shipments");
+        require(s.exists, "No shipment");
+        require(s.status == ShipmentStatus.InTransit, "Bad status");
+        require(!singaporeMilestonePaid[_shipmentId], "Already paid");
+        require(!shipmentHasPOLoan[_shipmentId], "PO financed");
 
         singaporeMilestonePaid[_shipmentId] = true;
 
@@ -317,7 +317,7 @@ contract FreightEscrow {
 
         require(
             IERC20(s.token).transfer(beneficiary, payout),
-            "Escrow milestone payout failed"
+            "Payout failed"
         );
 
         IFreightPassport(passportContract).updatePassport(
@@ -333,8 +333,8 @@ contract FreightEscrow {
 
     function triggerMilestoneArrived(uint256 _shipmentId, int256 _temp) external onlyOracle {
         Shipment storage s = shipments[_shipmentId];
-        require(s.exists, "Shipment does not exist");
-        require(s.status == ShipmentStatus.InTransit, "Invalid status");
+        require(s.exists, "No shipment");
+        require(s.status == ShipmentStatus.InTransit, "Bad status");
 
         s.status = ShipmentStatus.Arrived;
         s.arrivedTimestamp = block.timestamp;
@@ -354,8 +354,8 @@ contract FreightEscrow {
 
     function triggerCustomClearance(uint256 _shipmentId, int256 _temp) external onlyOracle {
         Shipment storage s = shipments[_shipmentId];
-        require(s.exists, "Shipment does not exist");
-        require(s.status == ShipmentStatus.Arrived, "Invalid status");
+        require(s.exists, "No shipment");
+        require(s.status == ShipmentStatus.Arrived, "Bad status");
 
         s.status = ShipmentStatus.CustomCleared;
         s.customClearanceTimestamp = block.timestamp;
@@ -395,9 +395,9 @@ contract FreightEscrow {
 
     function pickupCargo(uint256 _shipmentId) external {
         Shipment storage s = shipments[_shipmentId];
-        require(s.exists, "Shipment does not exist");
-        require(s.status == ShipmentStatus.CustomCleared, "Shipment is not customs cleared / ready for pickup");
-        require(msg.sender == s.buyer, "Only shipment buyer can pick up cargo");
+        require(s.exists, "No shipment");
+        require(s.status == ShipmentStatus.CustomCleared, "Not cleared");
+        require(msg.sender == s.buyer, "Only buyer");
 
         // Auto-redeem USYC if wrapped
         if (usycWrapped[_shipmentId]) {
@@ -414,7 +414,7 @@ contract FreightEscrow {
             // Transfer demurrage penalty from buyer to the carrier
             require(
                 IERC20(s.token).transferFrom(msg.sender, s.carrier, penaltyAmount),
-                "Demurrage payment failed"
+                "Demurrage failed"
             );
             emit DemurrageCharged(_shipmentId, hoursLate, penaltyAmount);
         }
@@ -461,24 +461,24 @@ contract FreightEscrow {
             // Refund penalty to buyer
             require(
                 IERC20(s.token).transfer(s.buyer, tempPenalty),
-                "Temperature penalty refund failed"
+                "Refund failed"
             );
         }
 
         if (finalPayoutAfterPenalty > 0) {
             require(
                 IERC20(s.token).transfer(beneficiary, finalPayoutAfterPenalty),
-                "Beneficiary final transfer failed"
+                "Transfer failed"
             );
         }
 
         require(
             IERC20(s.token).transfer(s.carrier, finalCarrierPayout),
-            "Carrier transfer failed"
+            "Transfer failed"
         );
         require(
             IERC20(s.token).transfer(owner, platformFee),
-            "Platform fee transfer failed"
+            "Transfer failed"
         );
 
         // Calculate and pay USYC Yield Rebate (real or simulated)
@@ -487,7 +487,7 @@ contract FreightEscrow {
             // Already redeemed real yield, transfer it to buyer
             require(
                 IERC20(s.token).transfer(s.buyer, realYield),
-                "Real yield rebate transfer failed"
+                "Transfer failed"
             );
         } else {
             // Check for simulated yield fallback if not wrapped
@@ -522,8 +522,8 @@ contract FreightEscrow {
 
     function cancelShipment(uint256 _shipmentId) external {
         Shipment storage s = shipments[_shipmentId];
-        require(s.exists, "Shipment does not exist");
-        require(s.status == ShipmentStatus.Created, "Cannot cancel after transit has started");
+        require(s.exists, "No shipment");
+        require(s.status == ShipmentStatus.Created, "Transit started");
         require(msg.sender == s.buyer || msg.sender == owner, "Unauthorized");
 
         // Auto-redeem USYC if wrapped
@@ -543,7 +543,7 @@ contract FreightEscrow {
 
         require(
             IERC20(s.token).transfer(s.buyer, refundAmount),
-            "Refund transfer failed"
+            "Refund failed"
         );
 
         IFreightPassport(passportContract).updatePassport(
@@ -563,10 +563,10 @@ contract FreightEscrow {
         uint256[] calldata _amounts
     ) external {
         Shipment memory s = shipments[_shipmentId];
-        require(s.exists, "Shipment does not exist");
-        require(s.status == ShipmentStatus.Completed, "Shipment must be completed and settled first");
-        require(msg.sender == s.carrier, "Only the carrier can payout crew");
-        require(_crew.length == _amounts.length, "Arrays length mismatch");
+        require(s.exists, "No shipment");
+        require(s.status == ShipmentStatus.Completed, "Not completed");
+        require(msg.sender == s.carrier, "Only carrier");
+        require(_crew.length == _amounts.length, "Len mismatch");
 
         uint256 totalPayout = 0;
         for (uint256 i = 0; i < _amounts.length; i++) {
@@ -574,13 +574,13 @@ contract FreightEscrow {
         }
 
         // Verify the carrier has enough balance
-        require(IERC20(s.token).balanceOf(msg.sender) >= totalPayout, "Insufficient carrier balance");
+        require(IERC20(s.token).balanceOf(msg.sender) >= totalPayout, "Low balance");
 
         // Distribute funds
         for (uint256 i = 0; i < _crew.length; i++) {
             require(
                 IERC20(s.token).transferFrom(msg.sender, _crew[i], _amounts[i]),
-                "Crew payroll payment failed"
+                "Payment failed"
             );
         }
 

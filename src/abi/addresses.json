@@ -1,0 +1,8 @@
+{
+  "FreightPassport": "0xa106b3548e8d7bed77d984c1d6f9d60798bb87b0",
+  "FreightEscrow": "0xe6a4be867a1e798508a744ff115a95890afbbd45",
+  "USDC": "0x3600000000000000000000000000000000000000",
+  "chainName": "Arc Testnet",
+  "chainId": 5042002,
+  "explorer": "https://testnet.arcscan.app"
+}

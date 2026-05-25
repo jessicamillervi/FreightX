@@ -32,7 +32,7 @@ const config = getDefaultConfig({
   transports: {
     [arcTestnet.id]: http('https://rpc.testnet.arc.network'),
   },
-  ssr: true,
+  ssr: false,
 });
 
 const queryClient = new QueryClient();

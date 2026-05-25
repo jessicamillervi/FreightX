@@ -29,6 +29,7 @@ const arcTestnet = {
 import passportArtifact from '../abi/FreightPassport.json';
 import escrowArtifact from '../abi/FreightEscrow.json';
 import usycArtifact from '../abi/MockUSYC.json';
+import addresses from '../abi/addresses.json';
 
 // Constants
 export const USDC_ADDRESS = '0x3600000000000000000000000000000000000000';
@@ -180,8 +181,17 @@ export function getSavedContracts(): BlockchainContracts | null {
     try {
       return JSON.parse(saved);
     } catch {
-      return null;
+      // fallback
     }
+  }
+  if (addresses && addresses.FreightEscrow) {
+    return {
+      passport: addresses.FreightPassport as Address,
+      escrow: addresses.FreightEscrow as Address,
+      usdc: addresses.USDC as Address,
+      eurc: EURC_ADDRESS as Address,
+      usyc: '0x0000000000000000000000000000000000000000' as Address
+    };
   }
   return null;
 }
