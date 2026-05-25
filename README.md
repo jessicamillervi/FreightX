@@ -1,6 +1,5 @@
 # FreightX — Logistics & Trade Finance Orchestrator
 
-> **Track 2: Best SME Trade Finance & Working Capital Workflow**  
 > An end-to-end stablecoin-powered logistics escrow, invoice factoring, and pre-shipment financing platform built on [Arc Network](https://docs.arc.network/) using [Circle's USDC](https://developers.circle.com/stablecoins/what-is-usdc).
 
 ![Arc Network](https://img.shields.io/badge/Arc_Testnet-L1_Blockchain-0088ff?style=for-the-badge)
