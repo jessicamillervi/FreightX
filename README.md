@@ -2,9 +2,6 @@
 
 > An end-to-end stablecoin-powered logistics escrow, invoice factoring, and pre-shipment financing platform built on [Arc Network](https://docs.arc.network/) using [Circle's USDC](https://developers.circle.com/stablecoins/what-is-usdc).
 
-> 🎥 **Demo Video:** [Watch our Demo on YouTube](https://youtu.be/placeholder-demo)  
-> 🌐 **Live DApp:** [FreightX Dashboard on Vercel](https://freightx.vercel.app)
-
 ![Arc Network](https://img.shields.io/badge/Arc_Testnet-L1_Blockchain-0088ff?style=for-the-badge)
 ![USDC](https://img.shields.io/badge/USDC-Settlement_Rail-2775CA?style=for-the-badge)
 ![EURC](https://img.shields.io/badge/EURC-Multi_Currency-00e676?style=for-the-badge)
