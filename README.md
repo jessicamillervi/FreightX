@@ -221,10 +221,10 @@ graph TD
     C --> E
     D --> E
     E --> F{Evaluate Credit Rating Grade}
-    F -->|Score >= 95| G[AAA Rating (AAA Grade)]
-    F -->|85 to 95| H[AA Rating (AA Grade)]
-    F -->|70 to 85| I[A Rating (A Grade)]
-    F -->|Score under 70| J[BBB/B Rating (Average/Low)]
+    F -->|Score >= 95| G["AAA Rating"]
+    F -->|85 to 95| H["AA Rating"]
+    F -->|70 to 85| I["A Rating"]
+    F -->|Score under 70| J["BBB/B Rating"]
     G --> K[Save dynamic grade in FreightPassport NFT metadata]
     H --> K
     I --> K
