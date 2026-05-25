@@ -2,6 +2,9 @@
 
 > An end-to-end stablecoin-powered logistics escrow, invoice factoring, and pre-shipment financing platform built on [Arc Network](https://docs.arc.network/) using [Circle's USDC](https://developers.circle.com/stablecoins/what-is-usdc).
 
+> 🎥 **Demo Video:** [Watch our Demo on YouTube](https://youtu.be/placeholder-demo)  
+> 🌐 **Live DApp:** [FreightX Dashboard on Vercel](https://freightx.vercel.app)
+
 ![Arc Network](https://img.shields.io/badge/Arc_Testnet-L1_Blockchain-0088ff?style=for-the-badge)
 ![USDC](https://img.shields.io/badge/USDC-Settlement_Rail-2775CA?style=for-the-badge)
 ![EURC](https://img.shields.io/badge/EURC-Multi_Currency-00e676?style=for-the-badge)
@@ -103,6 +106,14 @@ sequenceDiagram
     Supplier->>Escrow: Split carrier payroll to Crew Wallets (Split Command)
     Escrow-->>Supplier: Net payout successfully finalized!
 ```
+
+### 🛠 Tech Stack Overview
+
+- **Frontend Framework:** Next.js 15 (App Router), React 19
+- **Styling:** Vanilla CSS with premium dark-mode glassmorphism and custom CSS transitions
+- **Web3 Integrations:** Viem, Wagmi, RainbowKit (providing standard MetaMask and local wallet capabilities)
+- **Smart Contracts:** Solidity (0.8.20), OpenZeppelin Contracts (ERC-721, Ownable)
+- **Custom Build Scripts:** Custom compilations using `solc` JS compiler and contract deployments via `viem` scripts (optimized for Arc Testnet gas specifications)
 
 ---
 
@@ -312,7 +323,7 @@ FreightX is fully deployed and verified on the **Arc Testnet L1 Network**:
 - Node.js 18.0 or higher
 - npm or yarn
 
-### Installation
+### Installation & Setup
 
 1. **Clone the repository:**
    ```bash
@@ -325,11 +336,32 @@ FreightX is fully deployed and verified on the **Arc Testnet L1 Network**:
    npm install
    ```
 
-3. **Run local developer server:**
+3. **Configure Environment Variables:**
+   Copy the template environment file to `.env` and fill in your custom credentials:
+   ```bash
+   cp .env.example .env
+   ```
+   Open `.env` and configure:
+   - `PRIVATE_KEY`: Your testnet wallet private key (used for deploying contracts to Arc Testnet).
+   - `ARC_TESTNET_RPC_URL`: The RPC endpoint for Arc Testnet (defaults to `https://rpc.testnet.arc.network`).
+
+4. **Compile & Deploy Smart Contracts (Optional):**
+   If you wish to compile or redeploy the FreightX contracts to your own testnet addresses:
+   - **Compile Contracts:**
+     ```bash
+     node scripts/compile.js
+     ```
+   - **Deploy Contracts:**
+     ```bash
+     node scripts/deploy.js
+     ```
+   *Note: The frontend is pre-configured to use our live deployed contracts on Arc Testnet, so local deployment is completely optional.*
+
+5. **Run the local developer server:**
    ```bash
    npm run dev
    ```
-   Open [http://localhost:3000](http://localhost:3000) to view the FreightX console dashboard.
+   Open [http://localhost:3000](http://localhost:3000) in your browser to explore the interactive FreightX console dashboard.
 
 ---
 
@@ -413,6 +445,25 @@ Upon successful delivery, suppliers, buyers, and carriers can export verified cr
 1. **EURC Faucet Simplification:** While the USDC faucet worked flawlessly, accessing testnet EURC required multiple manual steps. A unified testnet faucet dispensing all Circle assets would streamline multi-currency tests.
 2. **StableFX API Access:** Enterprise gates limited live FX integrations. Opening a public sandbox StableFX API with mock rates would let hackathon developers build real-time FX-aware escrow systems.
 3. **Automated Verification:** Support for automatic programmatic contract verification via standard API tooling on ArcScan explorer would enhance contract deployment pipelines.
+
+---
+
+## 🗺 Future Roadmap
+
+- 🔗 **Circle CCTP Cross-Chain Operations:** Enable instant, seamless cross-border shipping payments with automatic USDC bridging across Ethereum, Arbitrum, Solana, and Arc using Circle's Cross-Chain Transfer Protocol.
+- 📡 **Production IoT Telematics Integration:** Replace the simulated telemetry with physical GPS and cellular-enabled temperature sensor nodes (using Raspberry Pi Zero or ESP32) transmitting directly to an on-chain oracle.
+- 🧠 **AI Credit & Risk Underwriting:** Implement advanced decentralized credit scoring algorithms analyzing historical shipping reputation NFT logs to dynamically calculate optimized discount premiums for invoice factoring.
+- 🛡️ **Multi-Signature Buyer/Carrier Dispute Arbitration:** Build an on-chain multi-sig escrow dispute resolution panel composed of verified independent cargo surveyors to arbitrate cold-chain or cargo-loss claims.
+
+---
+
+## 👥 Team & Contact
+
+Built with 💡 and ⚡ for the **Agora Hackathon — USDC Commerce Stack Challenge**.
+
+- **Developer/Team Leader:** Jessica Miller & Team
+- **GitHub:** [@jessicamillervi](https://github.com/jessicamillervi)
+- **Project Repository:** [FreightX](https://github.com/jessicamillervi/FreightX)
 
 ---
 
