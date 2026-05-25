@@ -117,16 +117,16 @@ Manages localized key generation, Web3 provider handshakes, RPC querying, and co
 ```mermaid
 graph TD
     A[Start: Gateway Hub Tab] --> B{Choose Wallet Mode}
-    B -- Sandbox Mode --> C[Generate Local ECDSA Private Key]
+    B -->|Sandbox Mode| C[Generate Local ECDSA Private Key]
     C --> D[Store privateKey in browser LocalStorage]
-    B -- Live Web3 Mode --> E[Connect MetaMask / RainbowKit Wallet]
+    B -->|Live Web3 Mode| E[Connect MetaMask / RainbowKit Wallet]
     D --> F[Viem Client Hook: Query RPC Balances]
     E --> F
     F --> G[Read USDC native gas + USDC/EURC balances]
     G --> H{Balances Sufficient?}
-    H -- No --> I[Link to Circle Arc Faucet & Funder Tool]
+    H -->|No| I[Link to Circle Arc Faucet & Funder Tool]
     I --> F
-    H -- Yes --> J[Action: Deploy Smart Contracts Suite]
+    H -->|Yes| J[Action: Deploy Smart Contracts Suite]
     J --> K[Step 1: Deploy FreightPassport NFT Contract]
     K --> L[Step 2: Deploy FreightEscrow Settlement Contract]
     L --> M[Step 3: Deploy MockUSYC Treasury Yield Vault]
@@ -200,8 +200,8 @@ graph TD
     B --> C[Open Subcontractor Split-Pay UI]
     C --> D[Define multiple wallets & payroll values]
     D --> E{Sum of splits <= Carrier Payout?}
-    E -- No --> F[Display validation warning & disable button]
-    E -- Yes --> G[Request carrier signature]
+    E -->|No| F[Display validation warning & disable button]
+    E -->|Yes| G[Request carrier signature]
     G --> H[Write payoutCrew on FreightEscrow contract]
     H --> I[EVM dispatches USDC/EURC mass payouts in a single transaction]
     I --> J[Fuel merchant wallet credited]
@@ -217,13 +217,18 @@ graph TD
     A[Onchain Cargo Passport NFT History] --> B[Read count of Completed Escrows]
     A --> C[Audit telematics temp compliance rates]
     A --> D[Audit PO repayment speed logs]
-    B & C & D --> E[Compute Reputation Score: 0-100]
+    B --> E[Compute Reputation Score: 0-100]
+    C --> E
+    D --> E
     E --> F{Evaluate Credit Rating Grade}
-    F -- Score >= 95 --> G[AAA Rating (AAA Grade)]
-    F -- 85 <= Score < 95 --> H[AA Rating (AA Grade)]
-    F -- 70 <= Score < 85 --> I[A Rating (A Grade)]
-    F -- Score < 70 --> J[BBB/B Rating (Average/Low)]
-    G & H & I & J --> K[Save dynamic grade in FreightPassport NFT metadata]
+    F -->|"Score >= 95"| G[AAA Rating (AAA Grade)]
+    F -->|"85 <= Score < 95"| H[AA Rating (AA Grade)]
+    F -->|"70 <= Score < 85"| I[A Rating (A Grade)]
+    F -->|"Score < 70"| J[BBB/B Rating (Average/Low)]
+    G --> K[Save dynamic grade in FreightPassport NFT metadata]
+    H --> K
+    I --> K
+    J --> K
     K --> L[Action: Generate W3C Verifiable Credential]
     L --> M[Apply FreightX DID signature using local/signer keys]
     M --> N[Download signed JSON-LD Credential]
