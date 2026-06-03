@@ -314,6 +314,33 @@ FreightX is fully deployed and verified on the **Arc Testnet L1 Network**:
 
 ---
 
+## 📂 Repository Structure
+
+The project codebase is organized as follows:
+
+```text
+FreightX/
+├── contracts/               # Solidity Smart Contracts (0.8.20)
+│   ├── FreightEscrow.sol    # Core escrow, milestone payments, PO & invoice factoring logic
+│   ├── FreightPassport.sol  # Digital twin dynamic ERC-721 NFT passport
+│   └── MockUSYC.sol         # Mock USYC yield vault (ERC-4626) for simulated treasury rebates
+├── scripts/                 # Custom compile & deploy scripts (Node.js)
+│   ├── compile.js           # Compilation helper via solc compiler
+│   └── deploy.js            # Smart contract deployment pipeline via viem
+├── src/                     # Frontend Application Source Code
+│   ├── abi/                 # Contract JSON ABI metadata & address registry
+│   ├── app/                 # Next.js 15 App Router pages, layout, and Web3 context providers
+│   ├── components/          # Reusable UI components (onboarding, skeletons, logger alerts)
+│   └── services/            # Services layer: sandbox.ts bridge orchestrator
+├── .env.example             # Configuration template for local environment variables
+├── .gitignore               # System, dependencies, build artifacts, and secret exclusions
+├── eslint.config.mjs        # ESLint static code analysis configuration (ignores scripts)
+├── package.json             # App dependencies, devDependencies, and helper commands
+└── tsconfig.json            # Strict TypeScript configuration
+```
+
+---
+
 ## 🚀 Getting Started
 
 ### Prerequisites
