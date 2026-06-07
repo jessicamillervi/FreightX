@@ -2,27 +2,19 @@ const path = require('path');
 const fs = require('fs');
 const solc = require('solc');
 
-const passportPath = path.resolve(__dirname, '../contracts/FreightPassport.sol');
-const escrowPath = path.resolve(__dirname, '../contracts/FreightEscrow.sol');
-const usycPath = path.resolve(__dirname, '../contracts/MockUSYC.sol');
+const contractsDir = path.resolve(__dirname, '../contracts');
+const files = fs.readdirSync(contractsDir).filter(file => file.endsWith('.sol'));
 
-const passportSource = fs.readFileSync(passportPath, 'utf8');
-const escrowSource = fs.readFileSync(escrowPath, 'utf8');
-const usycSource = fs.readFileSync(usycPath, 'utf8');
+const sources = {};
+for (const file of files) {
+  sources[file] = {
+    content: fs.readFileSync(path.resolve(contractsDir, file), 'utf8')
+  };
+}
 
 const input = {
   language: 'Solidity',
-  sources: {
-    'FreightPassport.sol': {
-      content: passportSource
-    },
-    'FreightEscrow.sol': {
-      content: escrowSource
-    },
-    'MockUSYC.sol': {
-      content: usycSource
-    }
-  },
+  sources,
   settings: {
     viaIR: true,
     outputSelection: {
@@ -37,8 +29,25 @@ const input = {
   }
 };
 
-console.log('Compiling contracts (FreightPassport, FreightEscrow, MockUSYC)...');
-const output = JSON.parse(solc.compile(JSON.stringify(input)));
+function findImports(importPath) {
+  try {
+    let resolvedPath;
+    if (importPath.startsWith('@openzeppelin/')) {
+      resolvedPath = path.resolve(__dirname, '../node_modules', importPath);
+    } else {
+      resolvedPath = path.resolve(__dirname, '../contracts', importPath);
+    }
+    if (fs.existsSync(resolvedPath)) {
+      return { contents: fs.readFileSync(resolvedPath, 'utf8') };
+    }
+    return { error: 'File not found: ' + importPath };
+  } catch (err) {
+    return { error: 'Error resolving ' + importPath + ': ' + err.message };
+  }
+}
+
+console.log('Compiling contracts with OpenZeppelin import resolution...');
+const output = JSON.parse(solc.compile(JSON.stringify(input), { import: findImports }));
 
 // Check for errors/warnings
 let hasErrors = false;
@@ -62,7 +71,7 @@ if (!fs.existsSync(buildDir)) {
 }
 
 // Save all contracts from all source files
-const sourceFiles = ['FreightPassport.sol', 'FreightEscrow.sol', 'MockUSYC.sol'];
+const sourceFiles = Object.keys(sources);
 for (const sourceFile of sourceFiles) {
   const contracts = output.contracts[sourceFile];
   if (!contracts) continue;

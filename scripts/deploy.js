@@ -1,5 +1,5 @@
 require('dotenv').config();
-const { createPublicClient, createWalletClient, http } = require('viem');
+const { createPublicClient, createWalletClient, http, keccak256, toBytes } = require('viem');
 const { privateKeyToAccount } = require('viem/accounts');
 const { arcTestnet } = require('viem/chains');
 const fs = require('fs');
@@ -10,6 +10,10 @@ const escrowArtifact = require('../src/abi/FreightEscrow.json');
 
 const USDC_ADDRESS = '0x3600000000000000000000000000000000000000';
 const EURC_ADDRESS = '0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a';
+
+const ADMIN_ROLE = keccak256(toBytes('ADMIN_ROLE'));
+const ORACLE_ROLE = keccak256(toBytes('ORACLE_ROLE'));
+const OPERATOR_ROLE = keccak256(toBytes('OPERATOR_ROLE'));
 
 async function main() {
   const privateKey = process.env.PRIVATE_KEY;
@@ -80,7 +84,7 @@ async function main() {
     args: [escrowAddress],
   });
   await publicClient.waitForTransactionReceipt({ hash: setEscrowHash });
-  console.log('Reference set in FreightPassport successfully.');
+  console.log('Reference set in FreightPassport successfully (grants OPERATOR_ROLE to escrow).');
 
   console.log('\nStep 4: Setting passport contract reference in FreightEscrow...');
   const setPassportHash = await walletClient.writeContract({
@@ -91,6 +95,31 @@ async function main() {
   });
   await publicClient.waitForTransactionReceipt({ hash: setPassportHash });
   console.log('Reference set in FreightEscrow successfully.');
+
+  console.log('\nStep 5: Verifying roles and configurations...');
+  const isEscrowOperator = await publicClient.readContract({
+    address: passportAddress,
+    abi: passportArtifact.abi,
+    functionName: 'hasRole',
+    args: [OPERATOR_ROLE, escrowAddress],
+  });
+  console.log(`  - Is Escrow contract registered as Operator in Passport: ${isEscrowOperator}`);
+
+  const isDeployerAdmin = await publicClient.readContract({
+    address: escrowAddress,
+    abi: escrowArtifact.abi,
+    functionName: 'hasRole',
+    args: [ADMIN_ROLE, account.address],
+  });
+  console.log(`  - Is Deployer registered as Admin in Escrow: ${isDeployerAdmin}`);
+
+  const isDeployerOracle = await publicClient.readContract({
+    address: escrowAddress,
+    abi: escrowArtifact.abi,
+    functionName: 'hasRole',
+    args: [ORACLE_ROLE, account.address],
+  });
+  console.log(`  - Is Deployer registered as Oracle in Escrow: ${isDeployerOracle}`);
 
   // Save deployed addresses
   const addressesPath = path.resolve(__dirname, '../src/abi/addresses.json');
