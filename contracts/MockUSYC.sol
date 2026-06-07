@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+
 interface IERC20 {
     function transfer(address to, uint256 amount) external returns (bool);
     function transferFrom(address from, address to, uint256 amount) external returns (bool);
     function balanceOf(address account) external view returns (uint256);
 }
 
-contract MockUSYC {
+contract MockUSYC is ReentrancyGuard {
     string public name = "Hashnote Short-Duration Yield Coin";
     string public symbol = "USYC";
     uint8 public decimals = 6;
@@ -36,7 +38,7 @@ contract MockUSYC {
         return initialExchangeRate + (initialExchangeRate * APY_BPS * timePassed) / (10000 * 365 days);
     }
     
-    function deposit(uint256 assets, address receiver) external returns (uint256 shares) {
+    function deposit(uint256 assets, address receiver) external nonReentrant returns (uint256 shares) {
         uint256 rate = getExchangeRate();
         shares = (assets * 1e6) / rate;
         
@@ -49,7 +51,7 @@ contract MockUSYC {
         emit Deposit(msg.sender, receiver, assets, shares);
     }
     
-    function redeem(uint256 shares, address receiver, address owner) external returns (uint256 assets) {
+    function redeem(uint256 shares, address receiver, address owner) external nonReentrant returns (uint256 assets) {
         require(_balances[owner] >= shares, "Insufficient shares balance");
         
         uint256 rate = getExchangeRate();
