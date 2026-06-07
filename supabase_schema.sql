@@ -108,3 +108,26 @@ CREATE TABLE IF NOT EXISTS iot_devices (
 
 CREATE INDEX IF NOT EXISTS idx_iot_devices_shipment_id ON iot_devices(shipment_id);
 
+-- 7. Gateway Balances (USDC deposit balances for x402 nanopayments)
+CREATE TABLE IF NOT EXISTS gateway_balances (
+    wallet_address text PRIMARY KEY,
+    balance numeric NOT NULL DEFAULT 0,
+    updated_at timestamptz DEFAULT now()
+);
+
+-- 8. Gateway Payments (Individual x402 settlement ledger)
+CREATE TABLE IF NOT EXISTS gateway_payments (
+    id uuid PRIMARY KEY DEFAULT uuid_generate_v4(),
+    buyer_address text NOT NULL,
+    seller_address text NOT NULL,
+    amount numeric NOT NULL,
+    endpoint text NOT NULL,
+    shipment_id int,
+    tx_hash text,
+    created_at timestamptz DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_gateway_payments_buyer ON gateway_payments(buyer_address);
+CREATE INDEX IF NOT EXISTS idx_gateway_payments_shipment ON gateway_payments(shipment_id);
+
+
