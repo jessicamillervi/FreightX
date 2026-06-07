@@ -7,6 +7,7 @@ const path = require('path');
 
 const passportArtifact = require('../src/abi/FreightPassport.json');
 const escrowArtifact = require('../src/abi/FreightEscrow.json');
+const oracleArtifact = require('../src/abi/FreightOracle.json');
 
 const USDC_ADDRESS = '0x3600000000000000000000000000000000000000';
 const EURC_ADDRESS = '0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a';
@@ -96,6 +97,28 @@ async function main() {
   await publicClient.waitForTransactionReceipt({ hash: setPassportHash });
   console.log('Reference set in FreightEscrow successfully.');
 
+  console.log('\nStep 4.5: Deploying FreightOracle...');
+  const oracleHash = await walletClient.deployContract({
+    abi: oracleArtifact.abi,
+    bytecode: oracleArtifact.bytecode.startsWith('0x') ? oracleArtifact.bytecode : `0x${oracleArtifact.bytecode}`,
+    args: [escrowAddress],
+  });
+  console.log(`Transaction sent: ${oracleHash}`);
+  console.log('Waiting for transaction finality...');
+  const oracleReceipt = await publicClient.waitForTransactionReceipt({ hash: oracleHash });
+  const oracleAddress = oracleReceipt.contractAddress;
+  console.log(`FreightOracle deployed at: ${oracleAddress}`);
+
+  console.log('\nStep 4.6: Setting oracle contract reference in FreightEscrow...');
+  const setOracleHash = await walletClient.writeContract({
+    address: escrowAddress,
+    abi: escrowArtifact.abi,
+    functionName: 'setOracleContract',
+    args: [oracleAddress],
+  });
+  await publicClient.waitForTransactionReceipt({ hash: setOracleHash });
+  console.log('Reference set in FreightEscrow successfully (grants ORACLE_ROLE to oracle contract).');
+
   console.log('\nStep 5: Verifying roles and configurations...');
   const isEscrowOperator = await publicClient.readContract({
     address: passportAddress,
@@ -121,6 +144,14 @@ async function main() {
   });
   console.log(`  - Is Deployer registered as Oracle in Escrow: ${isDeployerOracle}`);
 
+  const isOracleContractOracle = await publicClient.readContract({
+    address: escrowAddress,
+    abi: escrowArtifact.abi,
+    functionName: 'hasRole',
+    args: [ORACLE_ROLE, oracleAddress],
+  });
+  console.log(`  - Is Oracle contract registered as Oracle in Escrow: ${isOracleContractOracle}`);
+
   // Save deployed addresses
   const addressesPath = path.resolve(__dirname, '../src/abi/addresses.json');
   fs.writeFileSync(
@@ -128,6 +159,7 @@ async function main() {
     JSON.stringify({
       FreightPassport: passportAddress,
       FreightEscrow: escrowAddress,
+      FreightOracle: oracleAddress,
       USDC: USDC_ADDRESS,
       chainName: 'Arc Testnet',
       chainId: arcTestnet.id,
