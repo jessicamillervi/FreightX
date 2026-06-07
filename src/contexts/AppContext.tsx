@@ -10,15 +10,10 @@ import {
   getSavedContracts,
   getAppMode,
   setAppMode as saveAppMode,
-  getLocalShipments,
   saveLocalShipments,
-  getPublicClient,
-  fetchShipmentFromChain,
-  fetchPOLoanFromChain,
   USDC_ADDRESS,
   CONTRACTS_KEY
 } from '@/services/sandbox';
-import escrowArtifact from '@/abi/FreightEscrow.json';
 import { type ShipmentData, type BlockchainContracts, type WalletInfo, type POLoanData, type Toast, type VCData } from '@/lib/types';
 import { DEFAULT_MOCK_SHIPMENTS } from '@/lib/constants';
 import { type CircleWalletSession, getSavedSession } from '@/lib/circle-wallet';
@@ -76,6 +71,9 @@ interface AppContextProps {
   isConnected: boolean;
   browserWalletClient: unknown;
   
+  userSession: { walletAddress: string; walletType: string } | null;
+  setUserSession: (session: { walletAddress: string; walletType: string } | null) => void;
+  
   updateBalances: (addr: string, type: 'sandbox' | 'web3' | 'circle') => Promise<void>;
   refreshShipmentsList: (mode: 'live' | 'local', cList: BlockchainContracts | null, _wInfo: WalletInfo | null) => Promise<void>;
   refreshPOLoansList: (mode: 'live' | 'local', cList: BlockchainContracts | null) => Promise<void>;
@@ -101,6 +99,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [deploying, setDeploying] = useState(false);
   const [deployStatus, setDeployStatus] = useState('');
   const [isRefreshingBalances, setIsRefreshingBalances] = useState(false);
+  const [userSession, setUserSession] = useState<{ walletAddress: string; walletType: string } | null>(null);
 
   // Wagmi/RainbowKit hooks
   const { address: connectedAddress, isConnected } = useAccount();
@@ -175,85 +174,79 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Fetch or simulate shipments
+  // Fetch shipments from API, triggering event sync first if in live mode
   const refreshShipmentsList = async (
     mode: 'live' | 'local', 
     cList: BlockchainContracts | null, 
     _wInfo: WalletInfo | null
   ) => {
-    if (_wInfo) {
-      // Unused parameter preserved for interface compatibility
-    }
     setLoading(true);
-    if (mode === 'local') {
-      const local = getLocalShipments();
-      if (local.length === 0) {
-        saveLocalShipments(DEFAULT_MOCK_SHIPMENTS);
-        setShipments(DEFAULT_MOCK_SHIPMENTS);
-      } else {
-        setShipments(local);
+    const activeAddress = _wInfo?.address || connectedAddress || circleSession?.address || '';
+    
+    try {
+      const headers: Record<string, string> = {};
+      if (activeAddress) {
+        headers['Authorization'] = `Bearer ${activeAddress}`;
       }
-    } else {
-      if (!cList) {
-        setShipments([]);
-        setLoading(false);
-        return;
-      }
-      try {
-        logTerminal('Fetching shipments from Arc Testnet...');
-        const shipmentsFetched: ShipmentData[] = [];
-        const publicClient = getPublicClient();
-        const nextId = await publicClient.readContract({
-          address: cList.escrow,
-          abi: escrowArtifact.abi,
-          functionName: 'nextShipmentId'
-        }) as bigint;
 
-        const limit = Number(nextId);
-        for (let i = 0; i < limit; i++) {
-          const sData = await fetchShipmentFromChain(cList, i);
-          if (sData) {
-            shipmentsFetched.push(sData as ShipmentData);
-          }
-        }
-        setShipments(shipmentsFetched);
-        logTerminal(`Fetched ${shipmentsFetched.length} shipments from contract.`);
-      } catch (err) {
-        const errMsg = err instanceof Error ? err.message : String(err);
-        logTerminal(`Error fetching chain data: ${errMsg}`);
-        showToast('Failed to fetch shipments from Arc Testnet.', 'error');
-        setShipments([]);
+      if (mode === 'live' && cList) {
+        logTerminal('Syncing database with Arc Testnet events...');
+        await fetch('/api/sync', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...headers
+          },
+          body: JSON.stringify({
+            escrowAddress: cList.escrow,
+            passportAddress: cList.passport
+          })
+        }).catch(err => console.error('Sync error:', err));
       }
+
+      // Query from API
+      logTerminal('Loading shipments via API...');
+      const res = await fetch('/api/shipments', { headers });
+      if (res.ok) {
+        const data = await res.json();
+        if (mode === 'local' && data.length === 0) {
+          saveLocalShipments(DEFAULT_MOCK_SHIPMENTS);
+          setShipments(DEFAULT_MOCK_SHIPMENTS);
+        } else {
+          setShipments(data);
+        }
+        logTerminal(`Fetched ${data.length} shipments via API.`);
+      } else {
+        showToast('Failed to load shipments from API.', 'error');
+      }
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      logTerminal(`Error loading shipments: ${errMsg}`);
+      showToast('Error loading shipments from API.', 'error');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
-  // Fetch PO loans from chain (live mode)
-  const refreshPOLoansList = async (mode: 'live' | 'local', cList: BlockchainContracts | null) => {
-    if (mode === 'local') {
-      // Local state is preserved
-    } else {
-      if (!cList) return;
-      try {
-        const publicClient = getPublicClient();
-        const nextId = await publicClient.readContract({
-          address: cList.escrow,
-          abi: escrowArtifact.abi,
-          functionName: 'nextPOId'
-        }) as bigint;
-        
-        const limit = Number(nextId);
-        const fetched: POLoanData[] = [];
-        for (let i = 0; i < limit; i++) {
-          const loan = await fetchPOLoanFromChain(cList, i);
-          if (loan) {
-            fetched.push(loan as POLoanData);
-          }
-        }
-        setPoLoans(fetched);
-      } catch (e) {
-        console.error('Error fetching PO loans:', e);
+  // Fetch PO loans from API
+  const refreshPOLoansList = async (_mode: 'live' | 'local', _cList: BlockchainContracts | null) => {
+    const activeAddress = wallet?.address || connectedAddress || circleSession?.address || '';
+    try {
+      const headers: Record<string, string> = {};
+      if (activeAddress) {
+        headers['Authorization'] = `Bearer ${activeAddress}`;
       }
+
+      logTerminal('Loading PO Financing loans from API...');
+      const res = await fetch('/api/po-loans', { headers });
+      if (res.ok) {
+        const data = await res.json();
+        setPoLoans(data);
+      } else {
+        console.error('Failed to load PO loans');
+      }
+    } catch (e) {
+      console.error('Error fetching PO loans via API:', e);
     }
   };
 
@@ -359,10 +352,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [connectedAddress, appMode]);
 
   useEffect(() => {
-    if (circleSession && circleSession.address) {
-      updateBalances(circleSession.address, 'circle');
+    if (signerType === 'circle' && circleSession) {
+      setUserSession({ walletAddress: circleSession.address, walletType: 'circle' });
+    } else if (signerType === 'web3' && connectedAddress) {
+      setUserSession({ walletAddress: connectedAddress, walletType: 'web3' });
+    } else if (wallet) {
+      setUserSession({ walletAddress: wallet.address, walletType: 'sandbox' });
+    } else {
+      setUserSession(null);
     }
-  }, [circleSession, appMode]);
+  }, [wallet, connectedAddress, circleSession, signerType]);
 
   return (
     <AppContext.Provider value={{
@@ -388,6 +387,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       deployStatus,
       isRefreshingBalances,
       
+      userSession,
+      setUserSession,
+
       shipments,
       setShipments,
       selectedShipmentId,

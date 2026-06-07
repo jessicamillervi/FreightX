@@ -393,6 +393,14 @@ export function getLocalShipments(): ShipmentData[] {
 export function saveLocalShipments(shipments: ShipmentData[]) {
   if (typeof window === 'undefined') return;
   localStorage.setItem(LOCAL_STATE_KEY, JSON.stringify(shipments));
+  
+  fetch('/api/shipments', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(shipments)
+  }).catch(err => console.error('Failed to sync shipments to backend:', err));
 }
 
 // 8. On-Chain Shipment Management
