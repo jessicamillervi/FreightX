@@ -20,6 +20,10 @@ interface IMockUSYC {
     function balanceOf(address account) external view returns (uint256);
 }
 
+interface IMessageTransmitter {
+    function usedNonces(bytes32 sourceAndNonce) external view returns (uint256);
+}
+
 contract FreightEscrow {
     address public owner;
     address public usdcToken;
@@ -87,6 +91,12 @@ contract FreightEscrow {
     // CCTP Cross-Chain Bridge Receiver
     mapping(uint256 => bytes32) public cctpSourceTxHash; // shipmentId => source chain burn tx hash
     mapping(uint256 => uint32) public cctpSourceDomain; // shipmentId => source chain domain
+    mapping(bytes32 => bool) public processedCCTPNonces; // prevent double-spend of CCTP messages
+    mapping(uint256 => bool) public cctpFundingRequired; // track if a shipment expects CCTP funding
+
+    // Arc Testnet CCTP Addresses
+    address public constant TOKEN_MESSENGER = 0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA;
+    address public constant MESSAGE_TRANSMITTER = 0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275;
 
     // Purchase Order (PO) Financing
     struct POLoan {
@@ -279,6 +289,11 @@ contract FreightEscrow {
         Shipment storage s = shipments[_shipmentId];
         require(s.exists, "No shipment");
         require(s.status == ShipmentStatus.Created, "Bad status");
+
+        // Ensure shipment has been funded if CCTP funding was required
+        if (cctpFundingRequired[_shipmentId]) {
+            require(cctpSourceTxHash[_shipmentId] != bytes32(0), "Shipment not funded yet via CCTP");
+        }
 
         s.status = ShipmentStatus.InTransit;
         
@@ -757,6 +772,10 @@ contract FreightEscrow {
 
         if (milestoneHash == keccak256("departure")) {
             require(s.status == ShipmentStatus.Created, "Invalid status for departure");
+            // Ensure shipment has been funded if CCTP funding was required
+            if (cctpFundingRequired[_shipmentId]) {
+                require(cctpSourceTxHash[_shipmentId] != bytes32(0), "Shipment not funded yet via CCTP");
+            }
             s.status = ShipmentStatus.InTransit;
             IFreightPassport(passportContract).updatePassport(s.passportTokenId, "In Transit (IoT Verified)", s.departurePort, _temperature, false);
             emit MilestoneReached(_shipmentId, "IoT Departure", s.departurePort, _temperature, 0);
@@ -847,21 +866,136 @@ contract FreightEscrow {
         return _redeemUSYC(_shipmentId);
     }
 
+    // Allow creating a shipment with pending CCTP funding
+    function createShipmentWithCCTPPending(
+        address _supplier,
+        address _carrier,
+        uint256 _cargoValue,
+        uint256 _shippingFee,
+        string calldata _departurePort,
+        string calldata _destinationPort,
+        uint256 _freeTimeHours,
+        uint256 _demurrageRatePerHour,
+        address _token
+    ) external returns (uint256) {
+        require(passportContract != address(0), "No passport");
+        require(_supplier != address(0) && _carrier != address(0), "Bad addresses");
+        require(_cargoValue > 0 && _shippingFee > 0, "Bad amounts");
+        require(_token == usdcToken || _token == eurcToken, "Bad token");
+
+        uint256 shipmentId = nextShipmentId++;
+        
+        // Mint the digital passport to the buyer
+        uint256 passportId = IFreightPassport(passportContract).mint(
+            msg.sender, 
+            _departurePort, 
+            _destinationPort
+        );
+
+        shipments[shipmentId] = Shipment({
+            id: shipmentId,
+            buyer: msg.sender,
+            supplier: _supplier,
+            carrier: _carrier,
+            cargoValue: _cargoValue,
+            shippingFee: _shippingFee,
+            releasedSupplierAmount: 0,
+            releasedCarrierAmount: 0,
+            departurePort: _departurePort,
+            destinationPort: _destinationPort,
+            status: ShipmentStatus.Created,
+            arrivedTimestamp: 0,
+            customClearanceTimestamp: 0,
+            pickupTimestamp: 0,
+            freeTimeHours: _freeTimeHours,
+            demurrageRatePerHour: _demurrageRatePerHour,
+            demurragePenaltyPaid: 0,
+            passportTokenId: passportId,
+            token: _token,
+            exists: true
+        });
+
+        _buyerShipments[msg.sender].push(shipmentId);
+        _supplierShipments[_supplier].push(shipmentId);
+        _carrierShipments[_carrier].push(shipmentId);
+        
+        createdTimestamps[shipmentId] = block.timestamp;
+        shipmentBeneficiary[shipmentId] = _supplier;
+
+        // Note: we do not pull funds from msg.sender here.
+        // It will be funded via recordCCTPFunding.
+        cctpFundingRequired[shipmentId] = true;
+
+        emit ShipmentCreated(shipmentId, msg.sender, _supplier, _carrier, passportId, _token);
+        return shipmentId;
+    }
+
     // ─── CCTP Cross-Chain Bridge Receiver ───
+
+    function parseCCTPMessage(bytes calldata message) public pure returns (
+        uint32 sourceDomain,
+        uint256 amount,
+        address mintRecipient
+    ) {
+        require(message.length >= 248, "Invalid CCTP message length");
+        
+        // Extract sourceDomain (bytes 4-7)
+        sourceDomain = uint32(bytes4(message[4:8]));
+        
+        // Extract amount (bytes 184-215)
+        amount = uint256(bytes32(message[184:216]));
+        
+        // Extract mintRecipient (bytes 152-183) - take the last 20 bytes
+        mintRecipient = address(uint160(uint256(bytes32(message[152:184]))));
+    }
 
     function recordCCTPFunding(
         uint256 _shipmentId,
-        uint32 _sourceDomain,
         bytes32 _sourceTxHash,
-        uint256 _amount
-    ) external onlyOwner {
-        Shipment memory s = shipments[_shipmentId];
+        bytes calldata _message
+    ) external {
+        Shipment storage s = shipments[_shipmentId];
         require(s.exists, "Shipment does not exist");
+        require(s.status == ShipmentStatus.Created, "Shipment already in transit or completed");
 
+        // Parse the CCTP message
+        (uint32 domain, uint256 amt, address recipient) = parseCCTPMessage(_message);
+
+        // Verify recipient matches the shipment buyer or this contract (if direct escrow minting was used)
+        require(recipient == s.buyer || recipient == address(this), "CCTP recipient must match shipment buyer or contract");
+
+        // Verify the amount matches the required escrow funding
+        uint256 totalEscrowNeeded = s.cargoValue + s.shippingFee;
+        require(amt >= totalEscrowNeeded, "CCTP amount insufficient for escrow");
+
+        // Extract nonce (bytes 12-19)
+        uint64 nonce = uint64(bytes8(_message[12:20]));
+        bytes32 sourceAndNonce = keccak256(abi.encodePacked(domain, nonce));
+
+        // Check if message has been processed on MessageTransmitter
+        require(
+            IMessageTransmitter(MESSAGE_TRANSMITTER).usedNonces(sourceAndNonce) > 0,
+            "CCTP message not processed on destination chain"
+        );
+
+        // Check if already processed in our contract to prevent reuse
+        require(!processedCCTPNonces[sourceAndNonce], "CCTP message already used for escrow");
+        processedCCTPNonces[sourceAndNonce] = true;
+
+        // Record CCTP info
         cctpSourceTxHash[_shipmentId] = _sourceTxHash;
-        cctpSourceDomain[_shipmentId] = _sourceDomain;
+        cctpSourceDomain[_shipmentId] = domain;
 
-        emit CCTPFundingReceived(_shipmentId, _sourceDomain, _sourceTxHash, _amount);
+        // Pull the minted USDC from the buyer to the escrow contract if they minted to themselves.
+        // If they minted directly to the contract, the funds are already here.
+        if (recipient == s.buyer) {
+            require(
+                IERC20(s.token).transferFrom(s.buyer, address(this), totalEscrowNeeded),
+                "CCTP USDC transferFrom buyer failed"
+            );
+        }
+
+        emit CCTPFundingReceived(_shipmentId, domain, _sourceTxHash, amt);
     }
 
     // View helpers for new features
