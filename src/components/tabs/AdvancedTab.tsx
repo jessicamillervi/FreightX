@@ -6,7 +6,8 @@ import {
   Activity, 
   ShieldCheck, 
   Send, 
-  TrendingUp 
+  TrendingUp,
+  CheckCircle2
 } from 'lucide-react';
 import { useWallet } from '@/hooks/useWallet';
 import { useShipments } from '@/hooks/useShipments';
@@ -18,10 +19,10 @@ import {
   triggerMilestoneWithIoTSignatureOnchain, 
   wrapEscrowInUSYCOnchain, 
   redeemUSYCOnchain, 
-  recordCCTPFundingOnchain, 
   saveLocalShipments, 
   EURC_ADDRESS 
 } from '@/services/sandbox';
+import { BridgeFunding } from '../BridgeFunding';
 
 export default function AdvancedTab() {
   const { appMode, showToast, logTerminal, contracts } = useAppContext();
@@ -451,66 +452,54 @@ export default function AdvancedTab() {
           Sponsors, importers, and lenders on public EVM networks (Arbitrum, Avalanche, Mainnet) can instantly fund FreightX escrows using Circle&apos;s Cross-Chain Transfer Protocol (CCTP). CCTP burns origin-chain USDC and mints native gas-stable USDC on Arc with 1:1 parity and sub-second finality.
         </p>
 
-        <div style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '1.25rem' }}>
-          <h4 style={{ fontSize: '0.85rem', marginBottom: '1rem', color: 'var(--secondary)' }}>CCTP Cross-Chain Bridge Terminal</h4>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
-            <div style={{ background: 'rgba(0,0,0,0.2)', padding: '0.75rem', borderRadius: '8px', textAlign: 'center', border: '1px solid var(--border-color)' }}>
-              <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>SOURCE BLOCKCHAIN</div>
-              <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--secondary)' }}>Arbitrum L2</div>
-              <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Domain ID: 3</div>
+        {currentShipment.cctpSourceTxHash && currentShipment.cctpSourceTxHash !== '0x0000000000000000000000000000000000000000000000000000000000000000' && currentShipment.cctpSourceTxHash !== '' ? (
+          <div style={{
+            background: 'rgba(0, 230, 118, 0.05)',
+            border: '1px solid rgba(0, 230, 118, 0.15)',
+            borderRadius: '12px',
+            padding: '1.25rem',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '0.75rem'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <CheckCircle2 size={20} style={{ color: '#00e676' }} />
+              <strong style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>Shipment Escrow Fully Funded</strong>
             </div>
-            <div style={{ background: 'rgba(0,0,0,0.2)', padding: '0.75rem', borderRadius: '8px', textAlign: 'center', border: '1px solid var(--border-color)' }}>
-              <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>BRIDGE STATUS</div>
-              <div style={{ fontSize: '0.85rem', fontWeight: 700, color: currentShipment.cctpSourceDomain ? 'var(--success)' : 'var(--warning)' }}>{currentShipment.cctpSourceDomain ? 'USDC Minted' : 'Pending Bridge'}</div>
-            </div>
-            <div style={{ background: 'rgba(0,0,0,0.2)', padding: '0.75rem', borderRadius: '8px', textAlign: 'center', border: '1px solid var(--border-color)' }}>
-              <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>DESTINATION BLOCKCHAIN</div>
-              <div style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--primary)' }}>Arc Testnet</div>
-              <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Domain ID: 9</div>
+            <div style={{ fontSize: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>Source Chain Domain:</span>
+                <strong>{currentShipment.cctpSourceDomain === 0 ? 'Ethereum Sepolia (Domain 0)' : currentShipment.cctpSourceDomain === 3 ? 'Arbitrum Sepolia (Domain 3)' : `Domain ${currentShipment.cctpSourceDomain}`}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: 'var(--text-secondary)' }}>Source Burn Tx Hash:</span>
+                <a
+                  href={`https://${currentShipment.cctpSourceDomain === 0 ? 'sepolia.etherscan.io' : 'sepolia.arbiscan.io'}/tx/${currentShipment.cctpSourceTxHash}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ color: '#00b0ff', fontFamily: 'var(--font-mono)' }}
+                >
+                  {currentShipment.cctpSourceTxHash.slice(0, 24)}...
+                </a>
+              </div>
             </div>
           </div>
-          <button
-            disabled={loading || !!currentShipment.cctpSourceDomain}
-            className="btn btn-primary"
-            style={{ fontSize: '0.8rem', padding: '0.6rem', width: '100%' }}
-            onClick={async () => {
-              if (!wallet) return;
-              setLoading(true);
-              const fakeTxHash = '0x' + Array.from({length: 64}, () => Math.floor(Math.random()*16).toString(16)).join('');
-              const amount = currentShipment.cargoValue + currentShipment.shippingFee;
-              logTerminal(`[CCTP Bridge] Initiating cross-chain deposit from Arbitrum (Domain 3)...`);
-              logTerminal(`[CCTP Bridge] Burning source USDC: TxHash ${fakeTxHash.slice(0,18)}... Amount: ${amount} USDC`);
-              await new Promise(r => setTimeout(r, 800));
-              logTerminal(`[CCTP Bridge] Querying Circle Iris API oracle for burn attestation...`);
-              await new Promise(r => setTimeout(r, 1200));
-              logTerminal(`[CCTP Bridge] Attestation received. Relaying mint command payload to Arc TokenMessenger...`);
-              if (appMode === 'local') {
-                await new Promise(r => setTimeout(r, 600));
+        ) : (
+          <BridgeFunding
+            shipmentId={selectedShipmentId}
+            requiredAmount={currentShipment.cargoValue + currentShipment.shippingFee}
+            onComplete={async () => {
+              if (appMode === 'live' && contracts) {
+                await refreshShipmentsList('live', contracts, wallet);
+              } else {
+                const fakeTxHash = '0x' + Array.from({length: 64}, () => Math.floor(Math.random()*16).toString(16)).join('');
                 const updated = shipments.map(s => s.id === selectedShipmentId ? { ...s, cctpSourceDomain: 3, cctpSourceTxHash: fakeTxHash } : s);
                 setShipments(updated);
                 saveLocalShipments(updated);
-                logTerminal(`[CCTP Bridge] Native USDC successfully minted on Arc. Cargo escrow #${selectedShipmentId} funded.`);
-                showToast('Cross-chain escrow funding successfully completed via CCTP (Local)!', 'success');
-              } else if (contracts) {
-                try {
-                  const signer = (signerType === 'web3' && browserWalletClient ? browserWalletClient : wallet.privateKey) as string | WalletClient;
-                  await recordCCTPFundingOnchain(signer, contracts, selectedShipmentId, 3, fakeTxHash, amount, (s) => { logTerminal(s); });
-                  showToast('Cross-chain escrow funding successfully completed via CCTP on-chain!', 'success');
-                  await refreshShipmentsList('live', contracts, wallet);
-                } catch (err) { logTerminal(`CCTP cross-chain funding record failed: ${err instanceof Error ? err.message : String(err)}`); showToast('Failed to register CCTP cross-chain funding.', 'error'); }
               }
-              setLoading(false);
             }}
-          >
-            <Send size={14} /> Execute CCTP Cross-Chain Transfer (Arbitrum → Arc)
-          </button>
-          {currentShipment.cctpSourceTxHash && currentShipment.cctpSourceTxHash !== '0x0000000000000000000000000000000000000000000000000000000000000000' && (
-            <div style={{ marginTop: '0.75rem', background: 'rgba(0,230,118,0.05)', border: '1px solid rgba(0,230,118,0.15)', borderRadius: '8px', padding: '0.75rem', fontSize: '0.75rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.25rem' }}><span style={{ color: 'var(--text-secondary)' }}>Source Domain ID:</span><strong>{currentShipment.cctpSourceDomain} (Arbitrum)</strong></div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--text-secondary)' }}>Source Burn TxHash:</span><strong style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem' }}>{currentShipment.cctpSourceTxHash.slice(0,24)}...</strong></div>
-            </div>
-          )}
-        </div>
+          />
+        )}
       </div>
     </div>
   );

@@ -1135,36 +1135,94 @@ export async function redeemUSYCOnchain(
 
 // ─── Advanced Feature 3: CCTP Cross-Chain Bridge Recording ───
 
+export async function createShipmentWithCCTPPendingOnchain(
+  walletSigner: string | WalletClient,
+  contracts: BlockchainContracts,
+  params: {
+    supplier: string;
+    carrier: string;
+    cargoValue: number;
+    shippingFee: number;
+    departurePort: string;
+    destinationPort: string;
+    freeTimeHours: number;
+    demurrageRatePerHour: number;
+    token: Address;
+  },
+  onProgress: (status: string) => void
+): Promise<{ shipmentId: number; txHash: string }> {
+  const publicClient = getPublicClient();
+  const walletClient = resolveWalletClient(walletSigner);
+
+  const cargoRaw = parseUnits(params.cargoValue.toString(), 6);
+  const shippingRaw = parseUnits(params.shippingFee.toString(), 6);
+  const demurrageRaw = parseUnits(params.demurrageRatePerHour.toString(), 6);
+  const tokenAddress = params.token || contracts.usdc;
+
+  onProgress('Creating Shipment with pending CCTP funding...');
+
+  const createHash = await walletClient.writeContract({
+    address: contracts.escrow,
+    abi: escrowArtifact.abi as unknown as import('viem').Abi,
+    functionName: 'createShipmentWithCCTPPending',
+    args: [
+      params.supplier as Address,
+      params.carrier as Address,
+      cargoRaw,
+      shippingRaw,
+      params.departurePort,
+      params.destinationPort,
+      BigInt(params.freeTimeHours),
+      demurrageRaw,
+      tokenAddress
+    ]
+  });
+
+  onProgress('Waiting for shipment transaction confirmation...');
+  await publicClient.waitForTransactionReceipt({ hash: createHash });
+  
+  let shipmentId = 0;
+  try {
+    const nextId = await publicClient.readContract({
+      address: contracts.escrow,
+      abi: escrowArtifact.abi as unknown as import('viem').Abi,
+      functionName: 'nextShipmentId'
+    }) as bigint;
+    shipmentId = Number(nextId) - 1;
+  } catch (err) {
+    console.error('Error parsing shipment ID', err);
+  }
+
+  onProgress(`Shipment created with pending CCTP funding. ID: ${shipmentId}`);
+  return { shipmentId, txHash: createHash };
+}
+
 export async function recordCCTPFundingOnchain(
   walletSigner: string | WalletClient,
   contracts: BlockchainContracts,
   shipmentId: number,
-  sourceDomain: number,
   sourceTxHash: string,
-  amount: number,
+  messageBytes: string,
   onProgress: (status: string) => void
 ): Promise<string> {
   const publicClient = getPublicClient();
   const walletClient = resolveWalletClient(walletSigner);
 
-  const amountRaw = parseUnits(amount.toString(), 6);
-
-  onProgress(`Recording CCTP cross-chain funding from domain ${sourceDomain}...`);
+  onProgress(`Registering CCTP message verification on Arc Testnet...`);
   const hash = await walletClient.writeContract({
     address: contracts.escrow,
-    abi: escrowArtifact.abi,
+    abi: escrowArtifact.abi as unknown as import('viem').Abi,
     functionName: 'recordCCTPFunding',
     args: [
       BigInt(shipmentId),
-      sourceDomain,
       sourceTxHash as `0x${string}`,
-      amountRaw
+      messageBytes as `0x${string}`
     ]
   });
 
-  onProgress('Waiting for CCTP recording confirmation...');
+  onProgress('Waiting for verification transaction confirmation...');
   await publicClient.waitForTransactionReceipt({ hash });
-  onProgress(`CCTP funding recorded. Source tx: ${sourceTxHash.slice(0, 16)}...`);
+  onProgress(`CCTP message verified. Escrow funded!`);
   return hash;
 }
 

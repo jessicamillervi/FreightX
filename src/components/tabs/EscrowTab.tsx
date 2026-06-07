@@ -9,6 +9,7 @@ import { usePOLoans } from '@/hooks/usePOLoans';
 import { useAppContext } from '@/contexts/AppContext';
 import { 
   createShipmentOnchain, 
+  createShipmentWithCCTPPendingOnchain,
   requestPOFinancingOnchain, 
   fundPOLoanOnchain,
   saveLocalShipments,
@@ -36,7 +37,8 @@ export default function EscrowTab() {
     freeTimeHours: '2', 
     demurrageRatePerHour: '15',
     tokenType: 'USDC' as 'USDC' | 'EURC',
-    poId: '' 
+    poId: '',
+    cctpPending: false
   });
 
   // PO Request Form
@@ -142,6 +144,56 @@ export default function EscrowTab() {
         return;
       }
 
+      if (formData.cctpPending) {
+        try {
+          const signer = (signerType === 'web3' && browserWalletClient ? browserWalletClient : wallet.privateKey) as string | WalletClient;
+          const { shipmentId, txHash } = await createShipmentWithCCTPPendingOnchain(
+            signer,
+            contracts,
+            {
+              supplier: formData.supplier,
+              carrier: formData.carrier,
+              cargoValue: val,
+              shippingFee: fee,
+              departurePort: formData.departurePort,
+              destinationPort: formData.destinationPort,
+              freeTimeHours: freeTime,
+              demurrageRatePerHour: rate,
+              token: tokenAddr as `0x${string}`
+            },
+            (status) => {
+              setCreateProgress(status);
+              logTerminal(status);
+            }
+          );
+
+          showToast(`Onchain Shipment #${shipmentId} Created (Pending CCTP)!`, 'success');
+          logTerminal(`Tx Confirmed: ${txHash.slice(0, 15)}... Pending CCTP Funding: ${val + fee} ${formData.tokenType}`);
+
+          await updateBalances(wallet.address, 'sandbox');
+          if (connectedAddress) await updateBalances(connectedAddress, 'web3');
+          await refreshShipmentsList('live', contracts, wallet);
+          setSelectedShipmentId(shipmentId);
+          
+          setIsCreatingShipment(false);
+          setCreateProgress('');
+          setFormData({
+            ...formData,
+            poId: '',
+            cctpPending: false
+          });
+        } catch (err) {
+          const errMsg = err instanceof Error ? err.message : String(err);
+          logTerminal(`Onchain creation failed: ${errMsg}`);
+          showToast('Creation failed.', 'error');
+          setIsCreatingShipment(false);
+          setCreateProgress('');
+        } finally {
+          setLoading(false);
+        }
+        return;
+      }
+
       try {
         const signer = (signerType === 'web3' && browserWalletClient ? browserWalletClient : wallet.privateKey) as string | WalletClient;
         const { shipmentId, txHash } = await createShipmentOnchain(
@@ -178,7 +230,8 @@ export default function EscrowTab() {
         setCreateProgress('');
         setFormData({
           ...formData,
-          poId: ''
+          poId: '',
+          cctpPending: false
         });
       } catch (err) {
         const errMsg = err instanceof Error ? err.message : String(err);
@@ -532,6 +585,20 @@ export default function EscrowTab() {
                     required
                   />
                 </div>
+              </div>
+
+              <div className="form-group" style={{ display: appMode === 'live' ? 'flex' : 'none', alignItems: 'center', gap: '0.5rem', marginTop: '0.75rem' }}>
+                <input 
+                  type="checkbox"
+                  id="cctpPending"
+                  checked={formData.cctpPending}
+                  onChange={(e) => setFormData({...formData, cctpPending: e.target.checked})}
+                  disabled={formData.poId !== ''}
+                  style={{ width: 'auto', cursor: 'pointer' }}
+                />
+                <label htmlFor="cctpPending" style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                  Enable CCTP Cross-Chain Funding (Deposit from Sepolia/Arbitrum)
+                </label>
               </div>
 
               <div style={{ marginTop: '1.25rem', display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
