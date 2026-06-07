@@ -15,9 +15,9 @@ import {
   Coins, 
   ScanQrCode, 
   Award, 
-  Loader2 
+  Loader2,
+  Fingerprint 
 } from 'lucide-react';
-import { ConnectButton } from '@rainbow-me/rainbowkit';
 import { useAccount } from 'wagmi';
 
 import { AppProvider, useAppContext } from '@/contexts/AppContext';
@@ -53,9 +53,10 @@ function Dashboard() {
   const { 
     wallet, 
     signerType, 
-    setSignerType, 
     sandboxBalances, 
     web3Balances, 
+    circleSession,
+    circleBalances,
     isRefreshingBalances, 
     updateBalances 
   } = useWallet();
@@ -134,12 +135,17 @@ function Dashboard() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <Wallet size={18} style={{ color: 'var(--primary)' }} />
-                    <h3 style={{ fontSize: '0.95rem', fontWeight: 600 }}>Trade Wallet Accounts</h3>
+                    <h3 style={{ fontSize: '0.95rem', fontWeight: 600 }}>Active Trade Wallet</h3>
                   </div>
                   <button 
                     onClick={() => {
-                      if (wallet?.address) updateBalances(wallet.address, 'sandbox');
-                      if (connectedAddress) updateBalances(connectedAddress, 'web3');
+                      if (signerType === 'circle' && circleSession?.address) {
+                        updateBalances(circleSession.address, 'circle');
+                      } else if (signerType === 'sandbox' && wallet?.address) {
+                        updateBalances(wallet.address, 'sandbox');
+                      } else if (signerType === 'web3' && connectedAddress) {
+                        updateBalances(connectedAddress, 'web3');
+                      }
                     }}
                     className="btn btn-secondary btn-icon" 
                     style={{ width: '28px', height: '28px', borderRadius: '6px' }}
@@ -149,76 +155,66 @@ function Dashboard() {
                   </button>
                 </div>
 
-                {appMode === 'live' && (
-                  <div style={{ display: 'flex', background: 'var(--bg-main)', padding: '0.25rem', borderRadius: '8px', border: '1px solid var(--border-color)', marginBottom: '0.25rem' }}>
-                    <button 
-                      onClick={() => setSignerType('sandbox')}
-                      className="btn"
-                      style={{ flex: 1, padding: '0.35rem', fontSize: '0.7rem', borderRadius: '6px', border: 'none', cursor: 'pointer', transition: 'all 0.2s', background: signerType === 'sandbox' ? 'var(--bg-surface-elevated)' : 'transparent', color: signerType === 'sandbox' ? 'var(--text-primary)' : 'var(--text-muted)' }}
-                    >
-                      Quick Sandbox Wallet
-                    </button>
-                    <button 
-                      onClick={() => setSignerType('web3')}
-                      className="btn"
-                      style={{ flex: 1, padding: '0.35rem', fontSize: '0.7rem', borderRadius: '6px', border: 'none', cursor: 'pointer', transition: 'all 0.2s', background: signerType === 'web3' ? 'var(--bg-surface-elevated)' : 'transparent', color: signerType === 'web3' ? 'var(--text-primary)' : 'var(--text-muted)' }}
-                    >
-                      Browser Web3 Wallet
-                    </button>
-                  </div>
-                )}
+                {/* Status Badges */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  {signerType === 'circle' ? (
+                    <span className="badge badge-primary" style={{ fontSize: '0.65rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                      <Fingerprint size={12} /> PASSKEY WALLET
+                    </span>
+                  ) : signerType === 'web3' ? (
+                    <span className="badge badge-success" style={{ fontSize: '0.65rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                      <Wallet size={12} /> WEB3 CLIENT
+                    </span>
+                  ) : (
+                    <span className="badge badge-secondary" style={{ fontSize: '0.65rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                      <Database size={12} /> SANDBOX KEYS
+                    </span>
+                  )}
+                  {signerType === 'circle' && (
+                    <span style={{ fontSize: '0.6rem', color: 'var(--success)', fontWeight: 'bold' }}>GASLESS SPONSORED</span>
+                  )}
+                </div>
 
-                {signerType === 'sandbox' || appMode === 'local' ? (
-                  wallet ? (
+                {/* Signer specific panel */}
+                {signerType === 'circle' ? (
+                  circleSession ? (
                     <div>
                       <div style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.75rem', marginBottom: '1rem' }}>
-                        <span style={{ display: 'block', fontSize: '0.65rem', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>WALLET ACCOUNT ADDRESS</span>
-                        <span style={{ fontSize: '0.8rem', fontFamily: 'var(--font-mono)', wordBreak: 'break-all' }}>{wallet.address}</span>
+                        <span style={{ display: 'block', fontSize: '0.65rem', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>PASSKEY USERNAME</span>
+                        <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--primary)' }}>{circleSession.username}</span>
+                        <span style={{ display: 'block', fontSize: '0.65rem', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', marginTop: '0.5rem', marginBottom: '0.25rem' }}>SMART ACCOUNT ADDRESS</span>
+                        <span style={{ fontSize: '0.75rem', fontFamily: 'var(--font-mono)', wordBreak: 'break-all' }}>{circleSession.address}</span>
                       </div>
 
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                         <div style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.65rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontSize: '0.65rem', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>GAS / SECURITIES FEE (USDC)</span>
-                          <strong style={{ fontSize: '0.9rem', color: 'var(--primary)' }}>{sandboxBalances.nativeGas}</strong>
+                          <span style={{ fontSize: '0.65rem', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>GAS BALANCE (USDC)</span>
+                          <strong style={{ fontSize: '0.9rem', color: 'var(--primary)' }}>{circleBalances.nativeGas}</strong>
                         </div>
                         <div style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.65rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontSize: '0.65rem', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>USDC BALANCE</span>
-                          <strong style={{ fontSize: '0.9rem', color: 'var(--secondary)' }}>{sandboxBalances.usdcToken}</strong>
+                          <span style={{ fontSize: '0.65rem', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>USDC TOKEN</span>
+                          <strong style={{ fontSize: '0.9rem', color: 'var(--secondary)' }}>{circleBalances.usdcToken}</strong>
                         </div>
                         <div style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.65rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontSize: '0.65rem', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>EURC BALANCE</span>
-                          <strong style={{ fontSize: '0.9rem', color: 'var(--success)' }}>{sandboxBalances.eurcToken}</strong>
+                          <span style={{ fontSize: '0.65rem', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>EURC TOKEN</span>
+                          <strong style={{ fontSize: '0.9rem', color: 'var(--success)' }}>{circleBalances.eurcToken}</strong>
                         </div>
                       </div>
-
-                      {appMode === 'live' && (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '1rem' }}>
-                          <a 
-                            href="https://faucet.circle.com" 
-                            target="_blank" 
-                            rel="noreferrer" 
-                            className="btn btn-secondary" 
-                            style={{ fontSize: '0.8rem', padding: '0.5rem 1rem', width: '100%' }}
-                          >
-                            Claim Free Test Funds <ChevronRight size={14} />
-                          </a>
-                          <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textAlign: 'center', display: 'block' }}>
-                            Circles faucet provides both Gas & Stablecoin balances
-                          </span>
-                        </div>
-                      )}
                     </div>
                   ) : (
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100px' }}>
-                      <Loader2 className="animate-spin-slow" size={24} />
+                    <div style={{ background: 'var(--bg-main)', border: '1px dashed var(--border-color)', borderRadius: '8px', padding: '1.25rem', textAlign: 'center' }}>
+                      <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem' }}>No active passkey wallet session.</span>
+                      <button 
+                        onClick={() => setActiveTab('sandbox')}
+                        className="btn btn-primary"
+                        style={{ fontSize: '0.75rem', padding: '0.4rem 0.8rem' }}
+                      >
+                        Create Passkey Wallet
+                      </button>
                     </div>
                   )
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.5rem' }}>
-                      <ConnectButton showBalance={false} chainStatus="none" accountStatus="avatar" />
-                    </div>
-
+                ) : signerType === 'web3' ? (
+                  <div>
                     {isConnected && connectedAddress ? (
                       <div>
                         <div style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.75rem', marginBottom: '1rem' }}>
@@ -226,9 +222,9 @@ function Dashboard() {
                           <span style={{ fontSize: '0.8rem', fontFamily: 'var(--font-mono)', wordBreak: 'break-all' }}>{connectedAddress}</span>
                         </div>
 
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                           <div style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.65rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                            <span style={{ fontSize: '0.65rem', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>GAS / SECURITIES FEE (USDC)</span>
+                            <span style={{ fontSize: '0.65rem', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>GAS / SECURITIES (USDC)</span>
                             <strong style={{ fontSize: '0.9rem', color: 'var(--primary)' }}>{web3Balances.nativeGas}</strong>
                           </div>
                           <div style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.65rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -243,11 +239,54 @@ function Dashboard() {
                       </div>
                     ) : (
                       <div style={{ background: 'var(--bg-main)', border: '1px dashed var(--border-color)', borderRadius: '8px', padding: '1.25rem', textAlign: 'center' }}>
-                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Click the connect button above to link your web3 browser wallet.</span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', display: 'block', marginBottom: '0.5rem' }}>Browser wallet disconnected.</span>
+                        <button 
+                          onClick={() => setActiveTab('sandbox')}
+                          className="btn btn-secondary"
+                          style={{ fontSize: '0.75rem', padding: '0.4rem 0.8rem' }}
+                        >
+                          Connect Wallet
+                        </button>
                       </div>
                     )}
                   </div>
+                ) : (
+                  wallet ? (
+                    <div>
+                      <div style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.75rem', marginBottom: '1rem' }}>
+                        <span style={{ display: 'block', fontSize: '0.65rem', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)', marginBottom: '0.25rem' }}>SANDBOX KEYS ADDRESS</span>
+                        <span style={{ fontSize: '0.8rem', fontFamily: 'var(--font-mono)', wordBreak: 'break-all' }}>{wallet.address}</span>
+                      </div>
+
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                        <div style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.65rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: '0.65rem', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>GAS / SECURITIES (USDC)</span>
+                          <strong style={{ fontSize: '0.9rem', color: 'var(--primary)' }}>{sandboxBalances.nativeGas}</strong>
+                        </div>
+                        <div style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.65rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: '0.65rem', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>USDC BALANCE</span>
+                          <strong style={{ fontSize: '0.9rem', color: 'var(--secondary)' }}>{sandboxBalances.usdcToken}</strong>
+                        </div>
+                        <div style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.65rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ fontSize: '0.65rem', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>EURC BALANCE</span>
+                          <strong style={{ fontSize: '0.9rem', color: 'var(--success)' }}>{sandboxBalances.eurcToken}</strong>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100px' }}>
+                      <Loader2 className="animate-spin-slow" size={24} />
+                    </div>
+                  )
                 )}
+
+                <button 
+                  onClick={() => setActiveTab('sandbox')}
+                  className="btn btn-secondary"
+                  style={{ width: '100%', fontSize: '0.75rem', marginTop: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem' }}
+                >
+                  Manage Wallets <ChevronRight size={12} />
+                </button>
               </div>
 
               {/* Smart Contract Info Panel */}
