@@ -9,6 +9,8 @@ import {
   darkTheme,
 } from '@rainbow-me/rainbowkit';
 import { type Chain } from 'viem';
+import { sepolia, arbitrumSepolia } from 'viem/chains';
+
 
 import '@rainbow-me/rainbowkit/styles.css';
 
@@ -28,9 +30,11 @@ const arcTestnet = {
 const config = getDefaultConfig({
   appName: 'FreightX Logistics',
   projectId: 'b55e8880628e4e9cfde8b14e9f7833a67', // Public development ID
-  chains: [arcTestnet],
+  chains: [arcTestnet, sepolia, arbitrumSepolia],
   transports: {
     [arcTestnet.id]: http('https://rpc.testnet.arc.network'),
+    [sepolia.id]: http(),
+    [arbitrumSepolia.id]: http(),
   },
   ssr: false,
 });
