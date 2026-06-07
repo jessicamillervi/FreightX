@@ -27,6 +27,7 @@ import {
   EURC_ADDRESS 
 } from '@/services/sandbox';
 import { type ShipmentData } from '@/lib/types';
+import IoTRealtime from '../IoTRealtime';
  
 export default function IoTTab() {
   const { appMode, showToast, logTerminal, updateBalances, contracts, setActiveTab } = useAppContext();
@@ -866,6 +867,8 @@ export default function IoTTab() {
         </div>
 
       </div>
+
+      <IoTRealtime />
 
     </div>
   );

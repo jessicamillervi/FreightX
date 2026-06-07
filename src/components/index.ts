@@ -4,4 +4,4 @@ export { TerminalLog } from './TerminalLog';
 export { ToastContainer, type Toast } from './ToastContainer';
 export { OnboardingHub } from './OnboardingHub';
 export { WalletConnect } from './WalletConnect';
-
+export { default as IoTRealtime } from './IoTRealtime';
