@@ -1,0 +1,77 @@
+{
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_shipmentId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "int256",
+          "name": "_temp",
+          "type": "int256"
+        }
+      ],
+      "name": "triggerCustomClearance",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_shipmentId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "int256",
+          "name": "_temp",
+          "type": "int256"
+        }
+      ],
+      "name": "triggerMilestoneArrived",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_shipmentId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "int256",
+          "name": "_temp",
+          "type": "int256"
+        }
+      ],
+      "name": "triggerMilestoneDeparture",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "uint256",
+          "name": "_shipmentId",
+          "type": "uint256"
+        },
+        {
+          "internalType": "int256",
+          "name": "_temp",
+          "type": "int256"
+        }
+      ],
+      "name": "triggerMilestoneSingapore",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "bytecode": ""
+}

@@ -108,6 +108,9 @@ contract FreightEscrow is AccessControl, ReentrancyGuard, Pausable {
     address public constant TOKEN_MESSENGER = 0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA;
     address public constant MESSAGE_TRANSMITTER = 0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275;
 
+    // Dedicated Oracle Contract
+    address public oracleContract;
+
     // Purchase Order (PO) Financing
     struct POLoan {
         uint256 id;
@@ -162,7 +165,7 @@ contract FreightEscrow is AccessControl, ReentrancyGuard, Pausable {
     }
 
     modifier onlyOracle() {
-        require(hasRole(ORACLE_ROLE, msg.sender), "Only Oracle");
+        require(hasRole(ORACLE_ROLE, msg.sender) || msg.sender == oracleContract, "Only Oracle");
         _;
     }
 
@@ -192,6 +195,16 @@ contract FreightEscrow is AccessControl, ReentrancyGuard, Pausable {
 
     function setUsycVault(address _vault) external onlyAdmin whenNotPaused {
         usycVault = _vault;
+    }
+
+    function setOracleContract(address _oracle) external onlyAdmin whenNotPaused {
+        if (oracleContract != address(0)) {
+            revokeRole(ORACLE_ROLE, oracleContract);
+        }
+        oracleContract = _oracle;
+        if (_oracle != address(0)) {
+            grantRole(ORACLE_ROLE, _oracle);
+        }
     }
 
     function pause() external onlyAdmin {

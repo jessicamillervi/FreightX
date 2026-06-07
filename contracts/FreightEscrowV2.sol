@@ -111,6 +111,8 @@ contract FreightEscrowV2 is
     address public constant TOKEN_MESSENGER = 0x8FE6B999Dc680CcFDD5Bf7EB0974218be2542DAA;
     address public constant MESSAGE_TRANSMITTER = 0xE737e5cEBEEBa77EFE34D4aa090756590b1CE275;
 
+    address public oracleContract;
+
     struct POLoan {
         uint256 id;
         address supplier;
@@ -159,7 +161,7 @@ contract FreightEscrowV2 is
     }
 
     modifier onlyOracle() {
-        require(hasRole(ORACLE_ROLE, msg.sender), "Only Oracle");
+        require(hasRole(ORACLE_ROLE, msg.sender) || msg.sender == oracleContract, "Only Oracle");
         _;
     }
 
@@ -205,6 +207,16 @@ contract FreightEscrowV2 is
 
     function setUsycVault(address _vault) external onlyAdmin whenNotPaused {
         usycVault = _vault;
+    }
+
+    function setOracleContract(address _oracle) external onlyAdmin whenNotPaused {
+        if (oracleContract != address(0)) {
+            revokeRole(ORACLE_ROLE, oracleContract);
+        }
+        oracleContract = _oracle;
+        if (_oracle != address(0)) {
+            grantRole(ORACLE_ROLE, _oracle);
+        }
     }
 
     // Register IoT Gateway Device for a shipment
