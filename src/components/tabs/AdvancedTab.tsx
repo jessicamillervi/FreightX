@@ -7,7 +7,8 @@ import {
   ShieldCheck, 
   Send, 
   TrendingUp,
-  CheckCircle2
+  CheckCircle2,
+  DollarSign
 } from 'lucide-react';
 import { useWallet } from '@/hooks/useWallet';
 import { useShipments } from '@/hooks/useShipments';
@@ -23,6 +24,8 @@ import {
   EURC_ADDRESS 
 } from '@/services/sandbox';
 import { BridgeFunding } from '../BridgeFunding';
+import NanopayRevenue from '../NanopayRevenue';
+
 
 export default function AdvancedTab() {
   const { appMode, showToast, logTerminal, contracts } = useAppContext();
@@ -78,6 +81,17 @@ export default function AdvancedTab() {
           <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: '8px', padding: '1.5rem', textAlign: 'center', border: '1px dashed var(--border-color)' }}>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Please select a cargo shipment from the registry to simulate CCTP cross-chain funding.</p>
           </div>
+        </div>
+
+        {/* Feature 4: Circle Gateway Nanopayments (x402) */}
+        <div className="glass-panel" style={{ borderLeft: '3px solid var(--success)' }}>
+          <h3 style={{ fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+            <DollarSign size={18} style={{ color: 'var(--success)' }} /> Gated Telemetry Nanopayments (Circle Gateway & x402)
+          </h3>
+          <p style={{ fontSize: '0.8rem', marginBottom: '1rem' }}>
+            Monetize high-frequency IoT cargo data using the HTTP 402 Payment Required standard. External audit, insurance, and logistics clients pay $0.001 per single telemetry query or $0.01 per shipment history. Settled gas-free using EIP-3009 authorizations.
+          </p>
+          <NanopayRevenue shipmentId={null} />
         </div>
       </div>
     );
@@ -500,6 +514,17 @@ export default function AdvancedTab() {
             }}
           />
         )}
+      </div>
+
+      {/* Feature 4: Circle Gateway Nanopayments (x402) */}
+      <div className="glass-panel" style={{ borderLeft: '3px solid var(--success)' }}>
+        <h3 style={{ fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+          <DollarSign size={18} style={{ color: 'var(--success)' }} /> Gated Telemetry Nanopayments (Circle Gateway & x402)
+        </h3>
+        <p style={{ fontSize: '0.8rem', marginBottom: '1rem' }}>
+          Monetize high-frequency IoT cargo data using the HTTP 402 Payment Required standard. External audit, insurance, and logistics clients pay $0.001 per single telemetry query or $0.01 per shipment history. Settled gas-free using EIP-3009 authorizations.
+        </p>
+        <NanopayRevenue shipmentId={selectedShipmentId} />
       </div>
     </div>
   );
