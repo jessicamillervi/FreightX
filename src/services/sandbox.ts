@@ -11,6 +11,7 @@ import {
   keccak256
 } from 'viem';
 import { privateKeyToAccount, generatePrivateKey } from 'viem/accounts';
+import { executeModularTransaction, type CircleWalletSession } from '@/lib/circle-wallet';
 
 const arcTestnet = {
   id: 5042002,
@@ -230,6 +231,20 @@ export function getWalletClient(privateKey: string) {
   });
 }
 
+export function resolveWalletClient(walletSigner: unknown): ViemWalletClient {
+  if (walletSigner && typeof walletSigner === 'object' && 'username' in walletSigner && 'address' in walletSigner) {
+    return {
+      writeContract: async (args: { address: Address; abi: unknown; functionName: string; args?: unknown[] }) => {
+        return executeModularTransaction(walletSigner as CircleWalletSession, args);
+      },
+      deployContract: async () => {
+        throw new Error('Contract deployment is not supported via modular wallets.');
+      }
+    } as unknown as ViemWalletClient;
+  }
+  return (typeof walletSigner === 'string' ? getWalletClient(walletSigner) : walletSigner) as unknown as ViemWalletClient;
+}
+
 // 5. Query Balances (USDC/EURC has 6 decimals, native Gas has 18 decimals)
 export async function queryBalances(address: Address) {
   try {
@@ -281,7 +296,7 @@ export async function deployContractsOnchain(
   onProgress: (status: string) => void
 ): Promise<BlockchainContracts> {
   const publicClient = getPublicClient();
-  const walletClient = (typeof walletSigner === 'string' ? getWalletClient(walletSigner) : walletSigner) as unknown as ViemWalletClient;
+  const walletClient = resolveWalletClient(walletSigner);
 
   onProgress('Deploying FreightPassport (ERC-721)...');
   const passportHash = await walletClient.deployContract({
@@ -399,7 +414,7 @@ export async function createShipmentOnchain(
   onProgress: (status: string) => void
 ): Promise<{ shipmentId: number; txHash: string }> {
   const publicClient = getPublicClient();
-  const walletClient = (typeof walletSigner === 'string' ? getWalletClient(walletSigner) : walletSigner) as unknown as ViemWalletClient;
+  const walletClient = resolveWalletClient(walletSigner);
 
   const cargoRaw = parseUnits(params.cargoValue.toString(), 6);
   const shippingRaw = parseUnits(params.shippingFee.toString(), 6);
@@ -470,7 +485,7 @@ export async function triggerMilestoneOnchain(
   onProgress: (status: string) => void
 ): Promise<string> {
   const publicClient = getPublicClient();
-  const walletClient = (typeof walletSigner === 'string' ? getWalletClient(walletSigner) : walletSigner) as unknown as ViemWalletClient;
+  const walletClient = resolveWalletClient(walletSigner);
   
   // Temperature represented on chain as (temp * 100)
   const tempScaled = BigInt(Math.round(temperature * 100));
@@ -535,7 +550,7 @@ export async function pickupCargoOnchain(
   onProgress: (status: string) => void
 ): Promise<string> {
   const publicClient = getPublicClient();
-  const walletClient = (typeof walletSigner === 'string' ? getWalletClient(walletSigner) : walletSigner) as unknown as ViemWalletClient;
+  const walletClient = resolveWalletClient(walletSigner);
 
   if (penaltyAmount > 0) {
     const tokenSymbol = tokenAddress === contracts.eurc ? 'EURC' : 'USDC';
@@ -575,7 +590,7 @@ export async function payoutCrewOnchain(
   onProgress: (status: string) => void
 ): Promise<string> {
   const publicClient = getPublicClient();
-  const walletClient = (typeof walletSigner === 'string' ? getWalletClient(walletSigner) : walletSigner) as unknown as ViemWalletClient;
+  const walletClient = resolveWalletClient(walletSigner);
   
   const amountsRaw = amounts.map(amt => parseUnits(amt.toString(), 6));
   const totalNeeded = amountsRaw.reduce((acc, val) => acc + val, 0n);
@@ -805,7 +820,7 @@ export async function offerShipmentForFactoringOnchain(
   onProgress: (status: string) => void
 ): Promise<string> {
   const publicClient = getPublicClient();
-  const walletClient = (typeof walletSigner === 'string' ? getWalletClient(walletSigner) : walletSigner) as unknown as ViemWalletClient;
+  const walletClient = resolveWalletClient(walletSigner);
   const priceRaw = parseUnits(price.toString(), 6);
 
   onProgress('Submitting invoice factoring offer to Arc...');
@@ -829,7 +844,7 @@ export async function cancelFactoringOfferOnchain(
   onProgress: (status: string) => void
 ): Promise<string> {
   const publicClient = getPublicClient();
-  const walletClient = (typeof walletSigner === 'string' ? getWalletClient(walletSigner) : walletSigner) as unknown as ViemWalletClient;
+  const walletClient = resolveWalletClient(walletSigner);
 
   onProgress('Cancelling factoring offer...');
   const hash = await walletClient.writeContract({
@@ -854,7 +869,7 @@ export async function purchaseFactoredShipmentOnchain(
   onProgress: (status: string) => void
 ): Promise<string> {
   const publicClient = getPublicClient();
-  const walletClient = (typeof walletSigner === 'string' ? getWalletClient(walletSigner) : walletSigner) as unknown as ViemWalletClient;
+  const walletClient = resolveWalletClient(walletSigner);
   const priceRaw = parseUnits(price.toString(), 6);
   const tokenSymbol = tokenAddress === contracts.eurc ? 'EURC' : 'USDC';
 
@@ -895,7 +910,7 @@ export async function requestPOFinancingOnchain(
   onProgress: (status: string) => void
 ): Promise<{ poId: number; txHash: string }> {
   const publicClient = getPublicClient();
-  const walletClient = (typeof walletSigner === 'string' ? getWalletClient(walletSigner) : walletSigner) as unknown as ViemWalletClient;
+  const walletClient = resolveWalletClient(walletSigner);
 
   const cargoRaw = parseUnits(params.cargoValue.toString(), 6);
   const loanRaw = parseUnits(params.loanAmount.toString(), 6);
@@ -941,7 +956,7 @@ export async function fundPOLoanOnchain(
   onProgress: (status: string) => void
 ): Promise<string> {
   const publicClient = getPublicClient();
-  const walletClient = (typeof walletSigner === 'string' ? getWalletClient(walletSigner) : walletSigner) as unknown as ViemWalletClient;
+  const walletClient = resolveWalletClient(walletSigner);
 
   const loanRaw = parseUnits(loanAmount.toString(), 6);
   const tokenSymbol = tokenAddress === contracts.eurc ? 'EURC' : 'USDC';
@@ -1017,7 +1032,7 @@ export async function setIotGatewayOnchain(
   onProgress: (status: string) => void
 ): Promise<string> {
   const publicClient = getPublicClient();
-  const walletClient = (typeof walletSigner === 'string' ? getWalletClient(walletSigner) : walletSigner) as unknown as ViemWalletClient;
+  const walletClient = resolveWalletClient(walletSigner);
 
   onProgress('Registering IoT Device Gateway on-chain...');
   const hash = await walletClient.writeContract({
@@ -1045,7 +1060,7 @@ export async function triggerMilestoneWithIoTSignatureOnchain(
   onProgress: (status: string) => void
 ): Promise<string> {
   const publicClient = getPublicClient();
-  const walletClient = (typeof walletSigner === 'string' ? getWalletClient(walletSigner) : walletSigner) as unknown as ViemWalletClient;
+  const walletClient = resolveWalletClient(walletSigner);
 
   const tempScaled = BigInt(Math.round(temperature * 100));
 
@@ -1079,7 +1094,7 @@ export async function wrapEscrowInUSYCOnchain(
   onProgress: (status: string) => void
 ): Promise<string> {
   const publicClient = getPublicClient();
-  const walletClient = (typeof walletSigner === 'string' ? getWalletClient(walletSigner) : walletSigner) as unknown as ViemWalletClient;
+  const walletClient = resolveWalletClient(walletSigner);
 
   onProgress('Wrapping escrow funds into USYC Yield Vault (ERC-4626)...');
   const hash = await walletClient.writeContract({
@@ -1102,7 +1117,7 @@ export async function redeemUSYCOnchain(
   onProgress: (status: string) => void
 ): Promise<string> {
   const publicClient = getPublicClient();
-  const walletClient = (typeof walletSigner === 'string' ? getWalletClient(walletSigner) : walletSigner) as unknown as ViemWalletClient;
+  const walletClient = resolveWalletClient(walletSigner);
 
   onProgress('Redeeming USYC shares back to USDC...');
   const hash = await walletClient.writeContract({
@@ -1130,7 +1145,7 @@ export async function recordCCTPFundingOnchain(
   onProgress: (status: string) => void
 ): Promise<string> {
   const publicClient = getPublicClient();
-  const walletClient = (typeof walletSigner === 'string' ? getWalletClient(walletSigner) : walletSigner) as unknown as ViemWalletClient;
+  const walletClient = resolveWalletClient(walletSigner);
 
   const amountRaw = parseUnits(amount.toString(), 6);
 

@@ -21,6 +21,8 @@ import {
 import escrowArtifact from '@/abi/FreightEscrow.json';
 import { type ShipmentData, type BlockchainContracts, type WalletInfo, type POLoanData, type Toast, type VCData } from '@/lib/types';
 import { DEFAULT_MOCK_SHIPMENTS } from '@/lib/constants';
+import { type CircleWalletSession, getSavedSession } from '@/lib/circle-wallet';
+
 
 interface AppContextProps {
   activeTab: 'sandbox' | 'escrows' | 'iot' | 'payroll' | 'passport' | 'advanced';
@@ -31,10 +33,14 @@ interface AppContextProps {
   
   wallet: WalletInfo | null;
   setWallet: (w: WalletInfo | null) => void;
-  signerType: 'sandbox' | 'web3';
-  setSignerType: (type: 'sandbox' | 'web3') => void;
+  signerType: 'sandbox' | 'web3' | 'circle';
+  setSignerType: (type: 'sandbox' | 'web3' | 'circle') => void;
   sandboxBalances: { nativeGas: string; usdcToken: string; eurcToken: string };
   web3Balances: { nativeGas: string; usdcToken: string; eurcToken: string };
+  circleSession: CircleWalletSession | null;
+  setCircleSession: (session: CircleWalletSession | null) => void;
+  circleBalances: { nativeGas: string; usdcToken: string; eurcToken: string };
+  setCircleBalances: (balances: { nativeGas: string; usdcToken: string; eurcToken: string }) => void;
   contracts: BlockchainContracts | null;
   setContracts: (c: BlockchainContracts | null) => void;
   deploying: boolean;
@@ -70,8 +76,8 @@ interface AppContextProps {
   isConnected: boolean;
   browserWalletClient: unknown;
   
-  updateBalances: (addr: string, type: 'sandbox' | 'web3') => Promise<void>;
-  refreshShipmentsList: (mode: 'live' | 'local', cList: BlockchainContracts | null, wInfo: WalletInfo | null) => Promise<void>;
+  updateBalances: (addr: string, type: 'sandbox' | 'web3' | 'circle') => Promise<void>;
+  refreshShipmentsList: (mode: 'live' | 'local', cList: BlockchainContracts | null, _wInfo: WalletInfo | null) => Promise<void>;
   refreshPOLoansList: (mode: 'live' | 'local', cList: BlockchainContracts | null) => Promise<void>;
   handleDeployContracts: () => Promise<void>;
   handleResetContracts: () => void;
@@ -86,9 +92,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   
   // Wallet & Contracts
   const [wallet, setWallet] = useState<WalletInfo | null>(null);
-  const [signerType, setSignerType] = useState<'sandbox' | 'web3'>('sandbox');
+  const [signerType, setSignerType] = useState<'sandbox' | 'web3' | 'circle'>('sandbox');
   const [sandboxBalances, setSandboxBalances] = useState({ nativeGas: '0.00', usdcToken: '0.00', eurcToken: '0.00' });
   const [web3Balances, setWeb3Balances] = useState({ nativeGas: '0.00', usdcToken: '0.00', eurcToken: '0.00' });
+  const [circleSession, setCircleSession] = useState<CircleWalletSession | null>(null);
+  const [circleBalances, setCircleBalances] = useState({ nativeGas: '0.00', usdcToken: '0.00', eurcToken: '0.00' });
   const [contracts, setContracts] = useState<BlockchainContracts | null>(null);
   const [deploying, setDeploying] = useState(false);
   const [deployStatus, setDeployStatus] = useState('');
@@ -143,7 +151,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   // Balance query helper
-  const updateBalances = async (addr: string, type: 'sandbox' | 'web3') => {
+  const updateBalances = async (addr: string, type: 'sandbox' | 'web3' | 'circle') => {
     if (!addr) return;
     if (type === 'sandbox') setIsRefreshingBalances(true);
     try {
@@ -155,8 +163,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       };
       if (type === 'sandbox') {
         setSandboxBalances(formatted);
-      } else {
+      } else if (type === 'web3') {
         setWeb3Balances(formatted);
+      } else {
+        setCircleBalances(formatted);
       }
     } catch (e) {
       console.error('Failed to update balances', e);
@@ -169,8 +179,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const refreshShipmentsList = async (
     mode: 'live' | 'local', 
     cList: BlockchainContracts | null, 
-    wInfo: WalletInfo | null
+    _wInfo: WalletInfo | null
   ) => {
+    if (_wInfo) {
+      // Unused parameter preserved for interface compatibility
+    }
     setLoading(true);
     if (mode === 'local') {
       const local = getLocalShipments();
@@ -181,7 +194,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setShipments(local);
       }
     } else {
-      if (!cList || !wInfo) {
+      if (!cList) {
         setShipments([]);
         setLoading(false);
         return;
@@ -320,6 +333,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
+    const savedCircle = getSavedSession();
+    if (savedCircle) {
+      setCircleSession(savedCircle);
+      setSignerType('circle');
+      logTerminal(`Circle Passkey Wallet Loaded: ${savedCircle.address}`);
+    }
+
     refreshShipmentsList(mode, savedContracts, w);
     refreshPOLoansList(mode, savedContracts);
     setIsInitialized(true);
@@ -338,6 +358,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [connectedAddress, appMode]);
 
+  useEffect(() => {
+    if (circleSession && circleSession.address) {
+      updateBalances(circleSession.address, 'circle');
+    }
+  }, [circleSession, appMode]);
+
   return (
     <AppContext.Provider value={{
       activeTab,
@@ -352,6 +378,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setSignerType,
       sandboxBalances,
       web3Balances,
+      circleSession,
+      setCircleSession,
+      circleBalances,
+      setCircleBalances,
       contracts,
       setContracts,
       deploying,
