@@ -97,3 +97,14 @@ CREATE INDEX IF NOT EXISTS idx_po_loans_supplier ON po_loans(supplier);
 CREATE INDEX IF NOT EXISTS idx_po_loans_buyer ON po_loans(buyer);
 CREATE INDEX IF NOT EXISTS idx_iot_readings_shipment_id ON iot_readings(shipment_id);
 CREATE INDEX IF NOT EXISTS idx_audit_logs_user_address ON audit_logs(user_address);
+
+-- 6. IoT Devices Table
+CREATE TABLE IF NOT EXISTS iot_devices (
+    device_id text PRIMARY KEY,
+    public_key text NOT NULL,
+    shipment_id int NOT NULL REFERENCES shipments(id) ON DELETE CASCADE,
+    registered_at timestamptz DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_iot_devices_shipment_id ON iot_devices(shipment_id);
+

@@ -17,6 +17,7 @@ interface MockStore {
   po_loans: Record<string, unknown>[];
   iot_readings: Record<string, unknown>[];
   audit_logs: Record<string, unknown>[];
+  iot_devices: Record<string, unknown>[];
 }
 
 const mockStore: MockStore = {
@@ -92,7 +93,8 @@ const mockStore: MockStore = {
     }
   ],
   iot_readings: [],
-  audit_logs: []
+  audit_logs: [],
+  iot_devices: []
 };
 
 // Custom query builder mock
