@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.20;
 
-import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
+// OpenZeppelin imports removed to reduce contract size under the 24,576 byte EVM limit
 
 interface IERC20 {
     function transfer(address to, uint256 amount) external returns (bool);
@@ -28,10 +26,60 @@ interface IMessageTransmitter {
     function usedNonces(bytes32 sourceAndNonce) external view returns (uint256);
 }
 
-contract FreightEscrow is AccessControl, ReentrancyGuard, Pausable {
+contract FreightEscrow {
+    // Custom lightweight Roles, Pausable, and ReentrancyGuard implementation
+    bytes32 public constant DEFAULT_ADMIN_ROLE = 0x00;
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
     bytes32 public constant ORACLE_ROLE = keccak256("ORACLE_ROLE");
     bytes32 public constant OPERATOR_ROLE = keccak256("OPERATOR_ROLE");
+
+    mapping(bytes32 => mapping(address => bool)) private _roles;
+    bool public paused;
+    uint8 private _reentrancyStatus = 1; // 1 = unlocked, 2 = locked
+
+    function hasRole(bytes32 role, address account) public view returns (bool) {
+        return _roles[role][account];
+    }
+
+    function grantRole(bytes32 role, address account) public onlyAdmin {
+        _roles[role][account] = true;
+    }
+
+    function revokeRole(bytes32 role, address account) public onlyAdmin {
+        _roles[role][account] = false;
+    }
+
+    function _setupRole(bytes32 role, address account) internal {
+        _roles[role][account] = true;
+    }
+
+    modifier onlyAdmin() {
+        require(_roles[ADMIN_ROLE][msg.sender]);
+        _;
+    }
+
+    modifier onlyOracle() {
+        require(_roles[ORACLE_ROLE][msg.sender] || msg.sender == oracleContract);
+        _;
+    }
+
+    modifier onlyOperator() {
+        require(_roles[OPERATOR_ROLE][msg.sender]);
+        _;
+    }
+
+    modifier whenNotPaused() {
+        require(!paused);
+        _;
+    }
+
+    modifier nonReentrant() {
+        require(_reentrancyStatus == 1);
+        _reentrancyStatus = 2;
+        _;
+        _reentrancyStatus = 1;
+    }
+
 
     address public owner; // Maintained for backward compatibility and tracking
     address public usdcToken;
@@ -163,23 +211,8 @@ contract FreightEscrow is AccessControl, ReentrancyGuard, Pausable {
     // CCTP Cross-Chain Events
     event CCTPFundingReceived(uint256 indexed shipmentId, uint32 sourceDomain, bytes32 sourceTxHash, uint256 amount);
 
-    modifier onlyAdmin() {
-        require(hasRole(ADMIN_ROLE, msg.sender), "Only Admin");
-        _;
-    }
-
-    modifier onlyOracle() {
-        require(hasRole(ORACLE_ROLE, msg.sender) || msg.sender == oracleContract, "Only Oracle");
-        _;
-    }
-
-    modifier onlyOperator() {
-        require(hasRole(OPERATOR_ROLE, msg.sender), "Only Operator");
-        _;
-    }
-
     modifier holdSettlement(uint256 _shipmentId) {
-        require(!disputeActive[_shipmentId], "Active dispute hold");
+        require(!disputeActive[_shipmentId]);
         _;
     }
 
@@ -192,10 +225,6 @@ contract FreightEscrow is AccessControl, ReentrancyGuard, Pausable {
         _setupRole(ADMIN_ROLE, msg.sender);
         _setupRole(ORACLE_ROLE, msg.sender);
         _setupRole(OPERATOR_ROLE, msg.sender);
-
-        _setRoleAdmin(ADMIN_ROLE, ADMIN_ROLE);
-        _setRoleAdmin(ORACLE_ROLE, ADMIN_ROLE);
-        _setRoleAdmin(OPERATOR_ROLE, ADMIN_ROLE);
     }
 
     function setPassportContract(address _passport) external onlyAdmin whenNotPaused {
@@ -222,7 +251,7 @@ contract FreightEscrow is AccessControl, ReentrancyGuard, Pausable {
 
     function setDisputeActive(uint256 _shipmentId, bool _active) external {
         require(msg.sender == arbitrationContract || hasRole(ADMIN_ROLE, msg.sender), "Only arbitrator/admin");
-        require(shipments[_shipmentId].exists, "No shipment");
+        require(shipments[_shipmentId].exists);
         disputeActive[_shipmentId] = _active;
     }
 
@@ -231,10 +260,8 @@ contract FreightEscrow is AccessControl, ReentrancyGuard, Pausable {
         uint256 _supplierPayout,
         uint256 _carrierPayout
     ) external nonReentrant whenNotPaused {
-        require(msg.sender == arbitrationContract, "Only arbitration contract");
         Shipment storage s = shipments[_shipmentId];
-        require(s.exists, "No shipment");
-        require(s.status != ShipmentStatus.Completed && s.status != ShipmentStatus.Cancelled, "Already resolved");
+        require(msg.sender == arbitrationContract && s.exists && s.status != ShipmentStatus.Completed && s.status != ShipmentStatus.Cancelled);
 
         // Release USYC if wrapped
         if (usycWrapped[_shipmentId]) {
@@ -246,7 +273,7 @@ contract FreightEscrow is AccessControl, ReentrancyGuard, Pausable {
         
         // Payout validation
         uint256 totalPayouts = _supplierPayout + _carrierPayout + platformFee;
-        require(totalPayouts <= totalEscrow, "Payout exceeds escrow");
+        require(totalPayouts <= totalEscrow);
 
         // Update state
         s.status = ShipmentStatus.Completed;
@@ -261,20 +288,20 @@ contract FreightEscrow is AccessControl, ReentrancyGuard, Pausable {
             if (beneficiary == address(0)) {
                 beneficiary = s.supplier;
             }
-            require(IERC20(s.token).transfer(beneficiary, _supplierPayout), "Supplier payout failed");
+            require(IERC20(s.token).transfer(beneficiary, _supplierPayout));
         }
         if (_carrierPayout > 0) {
-            require(IERC20(s.token).transfer(s.carrier, _carrierPayout), "Carrier payout failed");
+            require(IERC20(s.token).transfer(s.carrier, _carrierPayout));
         }
-        require(IERC20(s.token).transfer(owner, platformFee), "Platform fee failed");
+        require(IERC20(s.token).transfer(owner, platformFee));
 
         // Refund any remainder to buyer
         uint256 remainder = totalEscrow - totalPayouts;
         if (remainder > 0) {
-            require(IERC20(s.token).transfer(s.buyer, remainder), "Buyer refund failed");
+            require(IERC20(s.token).transfer(s.buyer, remainder));
         }
 
-        IFreightPassport(passportContract).updatePassport(
+        _updatePassport(
             s.passportTokenId,
             "Settled via Dispute Arbitration",
             s.destinationPort,
@@ -286,20 +313,18 @@ contract FreightEscrow is AccessControl, ReentrancyGuard, Pausable {
     }
 
     function pause() external onlyAdmin {
-        _pause();
+        paused = true;
     }
 
     function unpause() external onlyAdmin {
-        _unpause();
+        paused = false;
     }
 
     // Register IoT Gateway Device for a shipment
     function setIotGateway(uint256 _shipmentId, address _gateway) external whenNotPaused {
         Shipment memory s = shipments[_shipmentId];
-        require(s.exists, "Shipment does not exist");
+        require(s.exists && s.status == ShipmentStatus.Created && _gateway != address(0));
         require(msg.sender == s.buyer || hasRole(ADMIN_ROLE, msg.sender), "Only buyer/admin");
-        require(s.status == ShipmentStatus.Created, "Set before transit");
-        require(_gateway != address(0), "Invalid gateway address");
         iotGateway[_shipmentId] = _gateway;
         emit IoTGatewayRegistered(_shipmentId, _gateway);
     }
@@ -316,19 +341,12 @@ contract FreightEscrow is AccessControl, ReentrancyGuard, Pausable {
         address _token,
         uint256 _poId
     ) external nonReentrant whenNotPaused returns (uint256) {
-        require(passportContract != address(0), "No passport");
-        require(_supplier != address(0) && _carrier != address(0), "Bad addresses");
-        require(_cargoValue >= MIN_ESCROW_VALUE, "Escrow below minimum value");
-        require(_shippingFee > 0, "Bad shipping fee");
-        require(_token == usdcToken || _token == eurcToken, "Bad token");
+        require(passportContract != address(0) && _supplier != address(0) && _carrier != address(0) && _cargoValue >= MIN_ESCROW_VALUE && _shippingFee > 0 && (_token == usdcToken || _token == eurcToken));
 
         uint256 totalEscrowNeeded = _cargoValue + _shippingFee;
         
         // Transfer USDC/EURC from buyer to this contract
-        require(
-            IERC20(_token).transferFrom(msg.sender, address(this), totalEscrowNeeded),
-            "Deposit failed"
-        );
+        require(IERC20(_token).transferFrom(msg.sender, address(this), totalEscrowNeeded));
 
         uint256 shipmentId = nextShipmentId++;
         
@@ -373,22 +391,14 @@ contract FreightEscrow is AccessControl, ReentrancyGuard, Pausable {
         // Process PO financing repayment waterfall if linked
         if (poLoans[_poId].supplier != address(0)) {
             POLoan storage po = poLoans[_poId];
-            require(po.buyer == msg.sender, "PO buyer mismatch");
-            require(po.supplier == _supplier, "PO supplier mismatch");
-            require(po.cargoValue == _cargoValue, "PO cargo mismatch");
-            require(po.token == _token, "PO token mismatch");
-            require(po.funded, "PO not funded");
-            require(!po.repaid, "PO repaid");
+            require(po.buyer == msg.sender && po.supplier == _supplier && po.cargoValue == _cargoValue && po.token == _token && po.funded && !po.repaid);
 
             po.repaid = true;
             shipmentPOLoans[shipmentId] = _poId;
             shipmentHasPOLoan[shipmentId] = true;
             
             // Repay investor loan immediately
-            require(
-                IERC20(_token).transfer(po.investor, po.repaymentAmount),
-                "PO repayment failed"
-            );
+            require(IERC20(_token).transfer(po.investor, po.repaymentAmount));
             
             // Set releasedSupplierAmount to the loan repayment amount since they already received funds
             shipments[shipmentId].releasedSupplierAmount = po.repaymentAmount;
@@ -407,41 +417,38 @@ contract FreightEscrow is AccessControl, ReentrancyGuard, Pausable {
         }
     }
 
-    function triggerMilestoneDeparture(uint256 _shipmentId, int256 _temp) external onlyOracle whenNotPaused {
-        Shipment storage s = shipments[_shipmentId];
-        require(s.exists, "No shipment");
-        require(s.status == ShipmentStatus.Created, "Bad status");
-
-        // Ensure shipment has been funded if CCTP funding was required
-        if (cctpFundingRequired[_shipmentId]) {
-            require(cctpSourceTxHash[_shipmentId] != bytes32(0), "Shipment not funded yet via CCTP");
+    function _updatePassport(uint256 _tokenId, string memory _status, string memory _location, int256 _temp, bool _completed) internal {
+        if (passportContract != address(0)) {
+            IFreightPassport(passportContract).updatePassport(_tokenId, _status, _location, _temp, _completed);
         }
+    }
 
+    function _departure(uint256 _shipmentId, int256 _temp, bool isIot) internal {
+        Shipment storage s = shipments[_shipmentId];
+        require(s.exists && s.status == ShipmentStatus.Created && (!cctpFundingRequired[_shipmentId] || cctpSourceTxHash[_shipmentId] != bytes32(0)));
         s.status = ShipmentStatus.InTransit;
-        
         _checkTemperature(_shipmentId, _temp, s.departurePort);
-        
-        IFreightPassport(passportContract).updatePassport(
+        _updatePassport(
             s.passportTokenId, 
-            "In Transit", 
+            isIot ? "In Transit (IoT Verified)" : "In Transit", 
             s.departurePort, 
             _temp, 
             false
         );
-
-        emit MilestoneReached(_shipmentId, "Departure", s.departurePort, _temp, 0);
+        emit MilestoneReached(
+            _shipmentId, 
+            isIot ? "IoT Departure" : "Departure", 
+            s.departurePort, 
+            _temp, 
+            0
+        );
     }
 
-    function triggerMilestoneSingapore(uint256 _shipmentId, int256 _temp) external onlyOracle nonReentrant whenNotPaused {
+    function _singapore(uint256 _shipmentId, int256 _temp, bool isIot) internal {
         Shipment storage s = shipments[_shipmentId];
-        require(s.exists, "No shipment");
-        require(s.status == ShipmentStatus.InTransit, "Bad status");
-        require(!singaporeMilestonePaid[_shipmentId], "Already paid");
-        require(!shipmentHasPOLoan[_shipmentId], "PO financed");
+        require(s.exists && s.status == ShipmentStatus.InTransit && !singaporeMilestonePaid[_shipmentId] && !shipmentHasPOLoan[_shipmentId]);
 
         singaporeMilestonePaid[_shipmentId] = true;
-
-        // Release 30% of cargo value to the beneficiary as a milestone payout
         uint256 payout = (s.cargoValue * 30) / 100;
         s.releasedSupplierAmount += payout;
 
@@ -451,63 +458,82 @@ contract FreightEscrow is AccessControl, ReentrancyGuard, Pausable {
         if (beneficiary == address(0)) {
             beneficiary = s.supplier;
         }
+        require(IERC20(s.token).transfer(beneficiary, payout));
 
-        require(
-            IERC20(s.token).transfer(beneficiary, payout),
-            "Payout failed"
-        );
-
-        IFreightPassport(passportContract).updatePassport(
+        _updatePassport(
             s.passportTokenId, 
-            "In Transit - Singapore Checkpoint Passed (30% Payout Released)", 
+            isIot ? "Singapore (IoT Verified, 30% Payout)" : "In Transit - Singapore Checkpoint Passed (30% Payout Released)", 
             "Singapore Port", 
             _temp, 
             false
         );
+        emit MilestoneReached(
+            _shipmentId, 
+            isIot ? "IoT Singapore Checkpoint" : "Singapore Checkpoint", 
+            "Singapore Port", 
+            _temp, 
+            payout
+        );
+    }
 
-        emit MilestoneReached(_shipmentId, "Singapore Checkpoint", "Singapore Port", _temp, payout);
+    function _arrival(uint256 _shipmentId, int256 _temp, bool isIot) internal {
+        Shipment storage s = shipments[_shipmentId];
+        require(s.exists && s.status == ShipmentStatus.InTransit);
+        s.status = ShipmentStatus.Arrived;
+        s.arrivedTimestamp = block.timestamp;
+        _checkTemperature(_shipmentId, _temp, s.destinationPort);
+        _updatePassport(
+            s.passportTokenId, 
+            isIot ? "Arrived (IoT Verified)" : "Arrived at Destination Port", 
+            s.destinationPort, 
+            _temp, 
+            false
+        );
+        emit MilestoneReached(
+            _shipmentId, 
+            isIot ? "IoT Arrival" : "Arrival", 
+            s.destinationPort, 
+            _temp, 
+            0
+        );
+    }
+
+    function _customs(uint256 _shipmentId, int256 _temp, bool isIot) internal {
+        Shipment storage s = shipments[_shipmentId];
+        require(s.exists && s.status == ShipmentStatus.Arrived);
+        s.status = ShipmentStatus.CustomCleared;
+        s.customClearanceTimestamp = block.timestamp;
+        _checkTemperature(_shipmentId, _temp, s.destinationPort);
+        _updatePassport(
+            s.passportTokenId, 
+            isIot ? "Customs Cleared (IoT Verified)" : "Customs Cleared - Awaiting Pickup", 
+            s.destinationPort, 
+            _temp, 
+            false
+        );
+        emit MilestoneReached(
+            _shipmentId, 
+            isIot ? "IoT Customs" : "Customs Clearance", 
+            s.destinationPort, 
+            _temp, 
+            0
+        );
+    }
+
+    function triggerMilestoneDeparture(uint256 _shipmentId, int256 _temp) external onlyOracle whenNotPaused {
+        _departure(_shipmentId, _temp, false);
+    }
+
+    function triggerMilestoneSingapore(uint256 _shipmentId, int256 _temp) external onlyOracle nonReentrant whenNotPaused {
+        _singapore(_shipmentId, _temp, false);
     }
 
     function triggerMilestoneArrived(uint256 _shipmentId, int256 _temp) external onlyOracle whenNotPaused {
-        Shipment storage s = shipments[_shipmentId];
-        require(s.exists, "No shipment");
-        require(s.status == ShipmentStatus.InTransit, "Bad status");
-
-        s.status = ShipmentStatus.Arrived;
-        s.arrivedTimestamp = block.timestamp;
-
-        _checkTemperature(_shipmentId, _temp, s.destinationPort);
-
-        IFreightPassport(passportContract).updatePassport(
-            s.passportTokenId, 
-            "Arrived at Destination Port", 
-            s.destinationPort, 
-            _temp, 
-            false
-        );
-
-        emit MilestoneReached(_shipmentId, "Arrival", s.destinationPort, _temp, 0);
+        _arrival(_shipmentId, _temp, false);
     }
 
     function triggerCustomClearance(uint256 _shipmentId, int256 _temp) external onlyOracle whenNotPaused {
-        Shipment storage s = shipments[_shipmentId];
-        require(s.exists, "No shipment");
-        require(s.status == ShipmentStatus.Arrived, "Bad status");
-
-        s.status = ShipmentStatus.CustomCleared;
-        s.customClearanceTimestamp = block.timestamp;
-
-        _checkTemperature(_shipmentId, _temp, s.destinationPort);
-
-        IFreightPassport(passportContract).updatePassport(
-            s.passportTokenId, 
-            "Customs Cleared - Awaiting Pickup", 
-            s.destinationPort, 
-            _temp, 
-            false
-        );
-
-        emit MilestoneReached(_shipmentId, "Customs Clearance", s.destinationPort, _temp, 0);
+        _customs(_shipmentId, _temp, false);
     }
 
     function getDemurragePenalty(uint256 _shipmentId) public view returns (uint256 hoursLate, uint256 penaltyAmount) {
@@ -532,9 +558,7 @@ contract FreightEscrow is AccessControl, ReentrancyGuard, Pausable {
 
     function pickupCargo(uint256 _shipmentId) external nonReentrant whenNotPaused holdSettlement(_shipmentId) {
         Shipment storage s = shipments[_shipmentId];
-        require(s.exists, "No shipment");
-        require(s.status == ShipmentStatus.CustomCleared, "Not cleared");
-        require(msg.sender == s.buyer || hasRole(ORACLE_ROLE, msg.sender), "Only buyer or oracle");
+        require(s.exists && s.status == ShipmentStatus.CustomCleared && (msg.sender == s.buyer || hasRole(ORACLE_ROLE, msg.sender)));
 
         // Auto-redeem USYC if wrapped
         if (usycWrapped[_shipmentId]) {
@@ -585,43 +609,17 @@ contract FreightEscrow is AccessControl, ReentrancyGuard, Pausable {
             temperaturePenalties[_shipmentId] = tempPenalty;
         }
 
-        // Calculate USYC Yield Rebate (real or simulated)
         uint256 realYield = yieldEarned[_shipmentId];
-        uint256 simulatedYield = 0;
-        if (realYield == 0) {
-            uint256 createdTime = createdTimestamps[_shipmentId];
-            if (createdTime > 0) {
-                uint256 elapsed = block.timestamp - createdTime;
-                uint256 escrowedAmount = s.cargoValue + s.shippingFee;
-                simulatedYield = (escrowedAmount * USYC_APY_BPS * elapsed) / (10000 * 365 days);
-                
-                if (simulatedYield > 0) {
-                    uint256 contractBal = IERC20(s.token).balanceOf(address(this));
-                    uint256 totalFinalPayouts = finalPayoutAfterPenalty + finalCarrierPayout + platformFee;
-                    if (contractBal >= totalFinalPayouts + simulatedYield) {
-                        yieldEarned[_shipmentId] = simulatedYield;
-                    } else {
-                        simulatedYield = 0; // reset if low contract balance
-                    }
-                }
-            }
-        }
 
         // ─── INTERACTIONS (Perform all external contract calls/transfers) ───
         if (penaltyAmount > 0) {
-            require(
-                IERC20(s.token).transferFrom(msg.sender, s.carrier, penaltyAmount),
-                "Demurrage failed"
-            );
+            require(IERC20(s.token).transferFrom(msg.sender, s.carrier, penaltyAmount));
             emit DemurrageCharged(_shipmentId, hoursLate, penaltyAmount);
         }
 
         if (tempPenalty > 0) {
             // Refund penalty to buyer
-            require(
-                IERC20(s.token).transfer(s.buyer, tempPenalty),
-                "Refund failed"
-            );
+            require(IERC20(s.token).transfer(s.buyer, tempPenalty));
         }
 
         address beneficiary = shipmentBeneficiary[_shipmentId];
@@ -630,35 +628,18 @@ contract FreightEscrow is AccessControl, ReentrancyGuard, Pausable {
         }
 
         if (finalPayoutAfterPenalty > 0) {
-            require(
-                IERC20(s.token).transfer(beneficiary, finalPayoutAfterPenalty),
-                "Transfer failed"
-            );
+            require(IERC20(s.token).transfer(beneficiary, finalPayoutAfterPenalty));
         }
 
-        require(
-            IERC20(s.token).transfer(s.carrier, finalCarrierPayout),
-            "Transfer failed"
-        );
-        require(
-            IERC20(s.token).transfer(owner, platformFee),
-            "Transfer failed"
-        );
+        require(IERC20(s.token).transfer(s.carrier, finalCarrierPayout));
+        require(IERC20(s.token).transfer(owner, platformFee));
 
         if (realYield > 0) {
-            require(
-                IERC20(s.token).transfer(s.buyer, realYield),
-                "Transfer failed"
-            );
-        } else if (simulatedYield > 0) {
-            require(
-                IERC20(s.token).transfer(s.buyer, simulatedYield),
-                "Transfer failed"
-            );
+            require(IERC20(s.token).transfer(s.buyer, realYield));
         }
 
         // Update Cargo Passport to Completed
-        IFreightPassport(passportContract).updatePassport(
+        _updatePassport(
             s.passportTokenId,
             "Cargo Delivered & Payments Settled",
             s.destinationPort,
@@ -671,9 +652,7 @@ contract FreightEscrow is AccessControl, ReentrancyGuard, Pausable {
 
     function cancelShipment(uint256 _shipmentId) external nonReentrant whenNotPaused {
         Shipment storage s = shipments[_shipmentId];
-        require(s.exists, "No shipment");
-        require(s.status == ShipmentStatus.Created, "Transit started");
-        require(msg.sender == s.buyer || hasRole(ADMIN_ROLE, msg.sender), "Unauthorized");
+        require(s.exists && s.status == ShipmentStatus.Created && (msg.sender == s.buyer || hasRole(ADMIN_ROLE, msg.sender)));
 
         // Auto-redeem USYC if wrapped
         if (usycWrapped[_shipmentId]) {
@@ -690,12 +669,9 @@ contract FreightEscrow is AccessControl, ReentrancyGuard, Pausable {
             refundAmount = refundAmount - po.repaymentAmount;
         }
 
-        require(
-            IERC20(s.token).transfer(s.buyer, refundAmount),
-            "Refund failed"
-        );
+        require(IERC20(s.token).transfer(s.buyer, refundAmount));
 
-        IFreightPassport(passportContract).updatePassport(
+        _updatePassport(
             s.passportTokenId,
             "Shipment Cancelled & Funds Refunded",
             s.departurePort,
@@ -712,11 +688,11 @@ contract FreightEscrow is AccessControl, ReentrancyGuard, Pausable {
         uint256[] calldata _amounts
     ) external nonReentrant whenNotPaused {
         Shipment memory s = shipments[_shipmentId];
-        require(s.exists, "No shipment");
-        require(s.status == ShipmentStatus.Completed, "Not completed");
-        require(msg.sender == s.carrier, "Only carrier");
-        require(_crew.length == _amounts.length, "Len mismatch");
-        require(_crew.length > 0 && _crew.length <= 50, "Crew size must be between 1 and 50");
+        require(s.exists);
+        require(s.status == ShipmentStatus.Completed);
+        require(msg.sender == s.carrier);
+        require(_crew.length == _amounts.length);
+        require(_crew.length > 0 && _crew.length <= 50);
 
         uint256 totalPayout = 0;
         for (uint256 i = 0; i < _amounts.length; i++) {
@@ -724,40 +700,22 @@ contract FreightEscrow is AccessControl, ReentrancyGuard, Pausable {
         }
 
         // Verify the carrier has enough balance
-        require(IERC20(s.token).balanceOf(msg.sender) >= totalPayout, "Low balance");
+        require(IERC20(s.token).balanceOf(msg.sender) >= totalPayout);
 
         // Distribute funds
         for (uint256 i = 0; i < _crew.length; i++) {
-            require(
-                IERC20(s.token).transferFrom(msg.sender, _crew[i], _amounts[i]),
-                "Payment failed"
-            );
+            require(IERC20(s.token).transferFrom(msg.sender, _crew[i], _amounts[i]));
         }
 
         emit CarrierPayrollPaid(_shipmentId, msg.sender, totalPayout, _crew.length);
     }
 
-    // Help functions for UI querying
-    function getBuyerShipments(address _buyer) external view returns (uint256[] memory) {
-        return _buyerShipments[_buyer];
-    }
 
-    function getSupplierShipments(address _supplier) external view returns (uint256[] memory) {
-        return _supplierShipments[_supplier];
-    }
-
-    function getCarrierShipments(address _carrier) external view returns (uint256[] memory) {
-        return _carrierShipments[_carrier];
-    }
 
     // Advanced features functions: Factoring
     function offerShipmentForFactoring(uint256 _shipmentId, uint256 _price) external whenNotPaused {
         Shipment memory s = shipments[_shipmentId];
-        require(s.exists, "Shipment does not exist");
-        require(msg.sender == s.supplier, "Only supplier can offer factoring");
-        require(s.status == ShipmentStatus.Created || s.status == ShipmentStatus.InTransit, "Invalid shipment status for factoring");
-        require(shipmentBeneficiary[_shipmentId] == s.supplier, "Shipment already factored");
-        require(_price > 0 && _price < s.cargoValue, "Invalid factoring price");
+        require(s.exists && msg.sender == s.supplier && (s.status == ShipmentStatus.Created || s.status == ShipmentStatus.InTransit) && shipmentBeneficiary[_shipmentId] == s.supplier && _price > 0 && _price < s.cargoValue);
 
         factoringOffers[_shipmentId] = FactoringOffer({
             price: _price,
@@ -770,9 +728,7 @@ contract FreightEscrow is AccessControl, ReentrancyGuard, Pausable {
 
     function cancelFactoringOffer(uint256 _shipmentId) external whenNotPaused {
         Shipment memory s = shipments[_shipmentId];
-        require(s.exists, "Shipment does not exist");
-        require(msg.sender == s.supplier, "Only supplier can cancel factoring");
-        require(factoringOffers[_shipmentId].active, "No active factoring offer");
+        require(s.exists && msg.sender == s.supplier && factoringOffers[_shipmentId].active);
 
         factoringOffers[_shipmentId].active = false;
 
@@ -781,20 +737,15 @@ contract FreightEscrow is AccessControl, ReentrancyGuard, Pausable {
 
     function purchaseFactoredShipment(uint256 _shipmentId) external nonReentrant whenNotPaused {
         Shipment memory s = shipments[_shipmentId];
-        require(s.exists, "Shipment does not exist");
         FactoringOffer storage offer = factoringOffers[_shipmentId];
-        require(offer.active, "No active factoring offer");
-        require(msg.sender != s.supplier, "Supplier cannot purchase own factoring");
+        require(s.exists && offer.active && msg.sender != s.supplier);
 
         offer.active = false;
         offer.investor = msg.sender;
         shipmentBeneficiary[_shipmentId] = msg.sender;
 
         // Transfer price in USDC/EURC from investor to supplier
-        require(
-            IERC20(s.token).transferFrom(msg.sender, s.supplier, offer.price),
-            "Factoring payment to supplier failed"
-        );
+        require(IERC20(s.token).transferFrom(msg.sender, s.supplier, offer.price));
 
         emit FactoringPurchased(_shipmentId, s.supplier, msg.sender, offer.price);
     }
@@ -806,11 +757,7 @@ contract FreightEscrow is AccessControl, ReentrancyGuard, Pausable {
         uint256 _loanAmount,
         address _token
     ) external whenNotPaused returns (uint256) {
-        require(_buyer != address(0), "Invalid buyer address");
-        require(_cargoValue >= MIN_ESCROW_VALUE, "Escrow below minimum value");
-        require(_loanAmount > 0 && _loanAmount <= (_cargoValue * 80) / 100, "Loan limit is 80% of cargo value");
-        require(_loanAmount <= MAX_PO_LOAN_CAP, "Loan requested exceeds cap");
-        require(_token == usdcToken || _token == eurcToken, "Only USDC/EURC supported");
+        require(_buyer != address(0) && _cargoValue >= MIN_ESCROW_VALUE && _loanAmount > 0 && _loanAmount <= (_cargoValue * 80) / 100 && _loanAmount <= MAX_PO_LOAN_CAP && (_token == usdcToken || _token == eurcToken));
 
         uint256 poId = nextPOId++;
         
@@ -836,18 +783,13 @@ contract FreightEscrow is AccessControl, ReentrancyGuard, Pausable {
 
     function fundPOLoan(uint256 _poId) external nonReentrant whenNotPaused {
         POLoan storage po = poLoans[_poId];
-        require(po.supplier != address(0), "PO does not exist");
-        require(!po.funded, "PO already funded");
-        require(msg.sender != po.supplier, "Supplier cannot fund own PO");
+        require(po.supplier != address(0) && !po.funded && msg.sender != po.supplier);
 
         po.funded = true;
         po.investor = msg.sender;
 
         // Transfer principal from investor to supplier
-        require(
-            IERC20(po.token).transferFrom(msg.sender, po.supplier, po.loanRequested),
-            "Funding transfer failed"
-        );
+        require(IERC20(po.token).transferFrom(msg.sender, po.supplier, po.loanRequested));
 
         emit POFinancingFunded(_poId, msg.sender, po.loanRequested);
     }
@@ -856,32 +798,27 @@ contract FreightEscrow is AccessControl, ReentrancyGuard, Pausable {
 
     function triggerMilestoneWithIoTSignature(
         uint256 _shipmentId,
-        string calldata _milestoneType, // "departure", "singapore", "arrival", "customs"
+        string calldata _milestoneType,
         int256 _temperature,
         uint256 _humidity,
         uint256 _timestamp,
         bytes calldata _signature
     ) external nonReentrant whenNotPaused {
         Shipment storage s = shipments[_shipmentId];
-        require(s.exists, "Shipment does not exist");
         address gateway = iotGateway[_shipmentId];
-        require(gateway != address(0), "No IoT gateway registered for this shipment");
+        require(s.exists && gateway != address(0) && _signature.length == 65);
 
-        // Reconstruct the message hash the IoT device signed
-        bytes32 messageHash = keccak256(abi.encodePacked(
-            _shipmentId,
-            _milestoneType,
-            _temperature,
-            _humidity,
-            _timestamp
-        ));
         bytes32 ethSignedHash = keccak256(abi.encodePacked(
             "\x19Ethereum Signed Message:\n32",
-            messageHash
+            keccak256(abi.encodePacked(
+                _shipmentId,
+                _milestoneType,
+                _temperature,
+                _humidity,
+                _timestamp
+            ))
         ));
 
-        // Recover signer from ECDSA signature
-        require(_signature.length == 65, "Invalid signature length");
         bytes32 r;
         bytes32 sv;
         uint8 v;
@@ -891,12 +828,9 @@ contract FreightEscrow is AccessControl, ReentrancyGuard, Pausable {
             v := byte(0, calldataload(add(_signature.offset, 64)))
         }
         if (v < 27) v += 27;
-        require(v == 27 || v == 28, "Invalid signature v value");
+        require((v == 27 || v == 28) && ecrecover(ethSignedHash, v, r, sv) == gateway);
 
-        address recovered = ecrecover(ethSignedHash, v, r, sv);
-        require(recovered == gateway, "IoT signature verification failed: signer mismatch");
-
-        emit IoTSignatureVerified(_shipmentId, recovered, _milestoneType, _temperature, _humidity);
+        emit IoTSignatureVerified(_shipmentId, gateway, _milestoneType, _temperature, _humidity);
 
         // Store humidity data
         humidityData[_shipmentId] = _humidity;
@@ -905,53 +839,15 @@ contract FreightEscrow is AccessControl, ReentrancyGuard, Pausable {
         bytes32 milestoneHash = keccak256(bytes(_milestoneType));
 
         if (milestoneHash == keccak256("departure")) {
-            require(s.status == ShipmentStatus.Created, "Invalid status for departure");
-            // Ensure shipment has been funded if CCTP funding was required
-            if (cctpFundingRequired[_shipmentId]) {
-                require(cctpSourceTxHash[_shipmentId] != bytes32(0), "Shipment not funded yet via CCTP");
-            }
-            
-            _checkTemperature(_shipmentId, _temperature, s.departurePort);
-            
-            s.status = ShipmentStatus.InTransit;
-            IFreightPassport(passportContract).updatePassport(s.passportTokenId, "In Transit (IoT Verified)", s.departurePort, _temperature, false);
-            emit MilestoneReached(_shipmentId, "IoT Departure", s.departurePort, _temperature, 0);
+            _departure(_shipmentId, _temperature, true);
         } else if (milestoneHash == keccak256("singapore")) {
-            require(s.status == ShipmentStatus.InTransit, "Invalid status");
-            require(!singaporeMilestonePaid[_shipmentId], "Singapore already paid");
-            require(!shipmentHasPOLoan[_shipmentId], "Singapore payout disabled for PO financed");
-            
-            _checkTemperature(_shipmentId, _temperature, "Singapore Port");
-            
-            singaporeMilestonePaid[_shipmentId] = true;
-            uint256 payout = (s.cargoValue * 30) / 100;
-            s.releasedSupplierAmount += payout;
-            
-            address beneficiary = shipmentBeneficiary[_shipmentId];
-            if (beneficiary == address(0)) beneficiary = s.supplier;
-            require(IERC20(s.token).transfer(beneficiary, payout), "Milestone payout failed");
-            IFreightPassport(passportContract).updatePassport(s.passportTokenId, "Singapore (IoT Verified, 30% Payout)", "Singapore Port", _temperature, false);
-            emit MilestoneReached(_shipmentId, "IoT Singapore Checkpoint", "Singapore Port", _temperature, payout);
+            _singapore(_shipmentId, _temperature, true);
         } else if (milestoneHash == keccak256("arrival")) {
-            require(s.status == ShipmentStatus.InTransit, "Invalid status");
-            
-            _checkTemperature(_shipmentId, _temperature, s.destinationPort);
-            
-            s.status = ShipmentStatus.Arrived;
-            s.arrivedTimestamp = block.timestamp;
-            IFreightPassport(passportContract).updatePassport(s.passportTokenId, "Arrived (IoT Verified)", s.destinationPort, _temperature, false);
-            emit MilestoneReached(_shipmentId, "IoT Arrival", s.destinationPort, _temperature, 0);
+            _arrival(_shipmentId, _temperature, true);
         } else if (milestoneHash == keccak256("customs")) {
-            require(s.status == ShipmentStatus.Arrived, "Invalid status");
-            
-            _checkTemperature(_shipmentId, _temperature, s.destinationPort);
-            
-            s.status = ShipmentStatus.CustomCleared;
-            s.customClearanceTimestamp = block.timestamp;
-            IFreightPassport(passportContract).updatePassport(s.passportTokenId, "Customs Cleared (IoT Verified)", s.destinationPort, _temperature, false);
-            emit MilestoneReached(_shipmentId, "IoT Customs", s.destinationPort, _temperature, 0);
+            _customs(_shipmentId, _temperature, true);
         } else {
-            revert("Unknown milestone type");
+            revert();
         }
     }
 
@@ -959,20 +855,20 @@ contract FreightEscrow is AccessControl, ReentrancyGuard, Pausable {
 
     function wrapEscrowInUSYC(uint256 _shipmentId) external onlyOperator nonReentrant whenNotPaused {
         Shipment memory s = shipments[_shipmentId];
-        require(s.exists, "Shipment does not exist");
-        require(s.status == ShipmentStatus.Created, "Can only wrap before transit");
-        require(usycVault != address(0), "USYC vault not configured");
-        require(!usycWrapped[_shipmentId], "Already wrapped");
+        require(s.exists);
+        require(s.status == ShipmentStatus.Created);
+        require(usycVault != address(0));
+        require(!usycWrapped[_shipmentId]);
 
         uint256 escrowBalance = s.cargoValue + s.shippingFee - s.releasedSupplierAmount;
-        require(escrowBalance > 0, "No funds to wrap");
+        require(escrowBalance > 0);
 
         // Approve USYC vault to pull USDC
         // Using low-level call since IERC20 only has transfer/transferFrom
         (bool approveSuccess,) = s.token.call(
             abi.encodeWithSignature("approve(address,uint256)", usycVault, escrowBalance)
         );
-        require(approveSuccess, "USYC approve failed");
+        require(approveSuccess);
 
         uint256 shares = IMockUSYC(usycVault).deposit(escrowBalance, address(this));
         usycShares[_shipmentId] = shares;
@@ -1003,8 +899,8 @@ contract FreightEscrow is AccessControl, ReentrancyGuard, Pausable {
     }
 
     function redeemUSYCForShipment(uint256 _shipmentId) external onlyOperator nonReentrant whenNotPaused returns (uint256 assetsReturned) {
-        require(usycWrapped[_shipmentId], "Not wrapped in USYC");
-        require(usycShares[_shipmentId] > 0, "No shares to redeem");
+        require(usycWrapped[_shipmentId]);
+        require(usycShares[_shipmentId] > 0);
         return _redeemUSYC(_shipmentId);
     }
 
@@ -1020,11 +916,11 @@ contract FreightEscrow is AccessControl, ReentrancyGuard, Pausable {
         uint256 _demurrageRatePerHour,
         address _token
     ) external whenNotPaused returns (uint256) {
-        require(passportContract != address(0), "No passport");
-        require(_supplier != address(0) && _carrier != address(0), "Bad addresses");
-        require(_cargoValue >= MIN_ESCROW_VALUE, "Escrow below minimum value");
-        require(_shippingFee > 0, "Bad shipping fee");
-        require(_token == usdcToken || _token == eurcToken, "Bad token");
+        require(passportContract != address(0));
+        require(_supplier != address(0) && _carrier != address(0));
+        require(_cargoValue >= MIN_ESCROW_VALUE);
+        require(_shippingFee > 0);
+        require(_token == usdcToken || _token == eurcToken);
 
         uint256 shipmentId = nextShipmentId++;
         
@@ -1080,7 +976,7 @@ contract FreightEscrow is AccessControl, ReentrancyGuard, Pausable {
         uint256 amount,
         address mintRecipient
     ) {
-        require(message.length >= 248, "Invalid CCTP message length");
+        require(message.length >= 248);
         
         // Extract sourceDomain (bytes 4-7)
         sourceDomain = uint32(bytes4(message[4:8]));
@@ -1098,31 +994,15 @@ contract FreightEscrow is AccessControl, ReentrancyGuard, Pausable {
         bytes calldata _message
     ) external nonReentrant whenNotPaused {
         Shipment storage s = shipments[_shipmentId];
-        require(s.exists, "Shipment does not exist");
-        require(s.status == ShipmentStatus.Created, "Shipment already in transit or completed");
-
-        // Parse the CCTP message
+        // Extract nonce (bytes 12-19) to compute sourceAndNonce first
         (uint32 domain, uint256 amt, address recipient) = parseCCTPMessage(_message);
-
-        // Verify recipient matches the shipment buyer or this contract (if direct escrow minting was used)
-        require(recipient == s.buyer || recipient == address(this), "CCTP recipient must match shipment buyer or contract");
-
-        // Verify the amount matches the required escrow funding
-        uint256 totalEscrowNeeded = s.cargoValue + s.shippingFee;
-        require(amt >= totalEscrowNeeded, "CCTP amount insufficient for escrow");
-
-        // Extract nonce (bytes 12-19)
         uint64 nonce = uint64(bytes8(_message[12:20]));
         bytes32 sourceAndNonce = keccak256(abi.encodePacked(domain, nonce));
 
-        // Check if message has been processed on MessageTransmitter
-        require(
-            IMessageTransmitter(MESSAGE_TRANSMITTER).usedNonces(sourceAndNonce) > 0,
-            "CCTP message not processed on destination chain"
-        );
+        require(s.exists && s.status == ShipmentStatus.Created && (recipient == s.buyer || recipient == address(this)));
+        uint256 totalEscrowNeeded = s.cargoValue + s.shippingFee;
+        require(amt >= totalEscrowNeeded && IMessageTransmitter(MESSAGE_TRANSMITTER).usedNonces(sourceAndNonce) > 0 && !processedCCTPNonces[sourceAndNonce]);
 
-        // Check if already processed in our contract to prevent reuse
-        require(!processedCCTPNonces[sourceAndNonce], "CCTP message already used for escrow");
         processedCCTPNonces[sourceAndNonce] = true;
 
         // Record CCTP info
@@ -1132,29 +1012,9 @@ contract FreightEscrow is AccessControl, ReentrancyGuard, Pausable {
         // Pull the minted USDC from the buyer to the escrow contract if they minted to themselves.
         // If they minted directly to the contract, the funds are already here.
         if (recipient == s.buyer) {
-            require(
-                IERC20(s.token).transferFrom(s.buyer, address(this), totalEscrowNeeded),
-                "CCTP USDC transferFrom buyer failed"
-            );
+            require(IERC20(s.token).transferFrom(s.buyer, address(this), totalEscrowNeeded));
         }
 
         emit CCTPFundingReceived(_shipmentId, domain, _sourceTxHash, amt);
-    }
-
-    // View helpers for new features
-    function getIoTGateway(uint256 _shipmentId) external view returns (address) {
-        return iotGateway[_shipmentId];
-    }
-
-    function getHumidity(uint256 _shipmentId) external view returns (uint256) {
-        return humidityData[_shipmentId];
-    }
-
-    function getUSYCInfo(uint256 _shipmentId) external view returns (bool wrapped, uint256 shares, uint256 yield_) {
-        return (usycWrapped[_shipmentId], usycShares[_shipmentId], yieldEarned[_shipmentId]);
-    }
-
-    function getCCTPInfo(uint256 _shipmentId) external view returns (uint32 sourceDomain, bytes32 sourceTxHash) {
-        return (cctpSourceDomain[_shipmentId], cctpSourceTxHash[_shipmentId]);
     }
 }
