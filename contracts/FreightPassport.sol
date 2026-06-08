@@ -40,9 +40,11 @@ contract FreightPassport is AccessControl, Pausable {
     mapping(uint256 => string[]) private _locationHistory;
     mapping(uint256 => int256[]) private _temperatureHistory;
     mapping(uint256 => uint256[]) private _updateTimeline;
+    mapping(uint256 => string[]) private _documentHashes;
 
     event Transfer(address indexed from, address indexed to, uint256 indexed tokenId);
     event PassportUpdated(uint256 indexed tokenId, string status, string location, int256 temperature);
+    event DocumentAttached(uint256 indexed tokenId, string ipfsHash);
 
     modifier onlyEscrow() {
         require(hasRole(OPERATOR_ROLE, msg.sender), "Only approved operators can call this");
@@ -126,6 +128,17 @@ contract FreightPassport is AccessControl, Pausable {
         _updateTimeline[tokenId].push(block.timestamp);
 
         emit PassportUpdated(tokenId, status, location, temperature);
+    }
+
+    function attachDocument(uint256 tokenId, string calldata ipfsHash) external onlyEscrow whenNotPaused {
+        require(_owners[tokenId] != address(0), "Passport does not exist");
+        _documentHashes[tokenId].push(ipfsHash);
+        emit DocumentAttached(tokenId, ipfsHash);
+    }
+
+    function getDocumentHashes(uint256 tokenId) external view returns (string[] memory) {
+        require(_owners[tokenId] != address(0), "Passport does not exist");
+        return _documentHashes[tokenId];
     }
 
     function ownerOf(uint256 tokenId) external view returns (address) {
