@@ -8,7 +8,8 @@ import {
   Send, 
   TrendingUp,
   CheckCircle2,
-  DollarSign
+  DollarSign,
+  Bot
 } from 'lucide-react';
 import { useWallet } from '@/hooks/useWallet';
 import { useShipments } from '@/hooks/useShipments';
@@ -25,6 +26,8 @@ import {
 } from '@/services/sandbox';
 import { BridgeFunding } from '../BridgeFunding';
 import NanopayRevenue from '../NanopayRevenue';
+import AgentDashboard from '../AgentDashboard';
+import FXRateCard from '../FXRateCard';
 
 
 export default function AdvancedTab() {
@@ -92,6 +95,28 @@ export default function AdvancedTab() {
             Monetize high-frequency IoT cargo data using the HTTP 402 Payment Required standard. External audit, insurance, and logistics clients pay $0.001 per single telemetry query or $0.01 per shipment history. Settled gas-free using EIP-3009 authorizations.
           </p>
           <NanopayRevenue shipmentId={null} />
+        </div>
+
+        {/* Feature 5: AI Agent Logistics Coordinator */}
+        <div className="glass-panel" style={{ borderLeft: '3px solid var(--primary)' }}>
+          <h3 style={{ fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+            <Bot size={18} style={{ color: 'var(--primary)' }} /> AI Agent Logistics Coordinator (ERC-8004 & ERC-8183)
+          </h3>
+          <p style={{ fontSize: '0.8rem', marginBottom: '1rem' }}>
+            Autonomous coordinator managing logistics milestones, cold-chain temperature compliance, and settlements on Arc Chain.
+          </p>
+          <AgentDashboard />
+        </div>
+
+        {/* Feature 6: StableFX Real Currency Swap */}
+        <div className="glass-panel" style={{ borderLeft: '3px solid var(--secondary)' }}>
+          <h3 style={{ fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+            <TrendingUp size={18} style={{ color: 'var(--secondary)' }} /> StableFX Real-Time Currency Converter & Swap
+          </h3>
+          <p style={{ fontSize: '0.8rem', marginBottom: '1rem' }}>
+            Get live FX quotes and execute stablecoin conversions (USDC ↔ EURC) on-chain utilizing Circle StableFX.
+          </p>
+          <FXRateCard />
         </div>
       </div>
     );
@@ -525,6 +550,28 @@ export default function AdvancedTab() {
           Monetize high-frequency IoT cargo data using the HTTP 402 Payment Required standard. External audit, insurance, and logistics clients pay $0.001 per single telemetry query or $0.01 per shipment history. Settled gas-free using EIP-3009 authorizations.
         </p>
         <NanopayRevenue shipmentId={selectedShipmentId} />
+      </div>
+
+      {/* Feature 5: AI Agent Logistics Coordinator */}
+      <div className="glass-panel" style={{ borderLeft: '3px solid var(--primary)' }}>
+        <h3 style={{ fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+          <Bot size={18} style={{ color: 'var(--primary)' }} /> AI Agent Logistics Coordinator (ERC-8004 & ERC-8183)
+        </h3>
+        <p style={{ fontSize: '0.8rem', marginBottom: '1rem' }}>
+          Autonomous coordinator managing logistics milestones, cold-chain temperature compliance, and settlements on Arc Chain.
+        </p>
+        <AgentDashboard />
+      </div>
+
+      {/* Feature 6: StableFX Real Currency Swap */}
+      <div className="glass-panel" style={{ borderLeft: '3px solid var(--secondary)' }}>
+        <h3 style={{ fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+          <TrendingUp size={18} style={{ color: 'var(--secondary)' }} /> StableFX Real-Time Currency Converter & Swap
+        </h3>
+        <p style={{ fontSize: '0.8rem', marginBottom: '1rem' }}>
+          Get live FX quotes and execute stablecoin conversions (USDC ↔ EURC) on-chain utilizing Circle StableFX.
+        </p>
+        <FXRateCard />
       </div>
     </div>
   );
