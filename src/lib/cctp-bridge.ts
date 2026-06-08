@@ -45,7 +45,7 @@ export async function executeBridge(params: BridgeParams) {
       getWalletClient: () => sourceWalletClient as any,
     }, {
       addressContext: 'user-controlled',
-      supportedChains: [] as any
+      supportedChains: [sourceChain]
     });
 
     // Create destination adapter (Arc Testnet)
@@ -54,7 +54,7 @@ export async function executeBridge(params: BridgeParams) {
       getWalletClient: () => destWalletClient as any,
     }, {
       addressContext: 'user-controlled',
-      supportedChains: [] as any
+      supportedChains: ['Arc_Testnet']
     });
 
     const kit = new AppKit();

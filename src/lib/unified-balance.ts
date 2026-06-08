@@ -82,7 +82,7 @@ export function createViemAdapter(
     },
     {
       addressContext: 'user-controlled',
-      supportedChains: [] as any,
+      supportedChains: [chain],
     }
   );
 }
