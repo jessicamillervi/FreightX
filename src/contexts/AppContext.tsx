@@ -22,8 +22,8 @@ import { fetchUnifiedBalances } from '@/lib/unified-balance';
 
 
 interface AppContextProps {
-  activeTab: 'sandbox' | 'escrows' | 'iot' | 'payroll' | 'passport' | 'advanced';
-  setActiveTab: (tab: 'sandbox' | 'escrows' | 'iot' | 'payroll' | 'passport' | 'advanced') => void;
+  activeTab: 'sandbox' | 'escrows' | 'iot' | 'payroll' | 'passport' | 'advanced' | 'disputes';
+  setActiveTab: (tab: 'sandbox' | 'escrows' | 'iot' | 'payroll' | 'passport' | 'advanced' | 'disputes') => void;
   appMode: 'local' | 'live';
   handleModeChange: (newMode: 'live' | 'local') => void;
   isInitialized: boolean;
@@ -90,7 +90,7 @@ interface AppContextProps {
 const AppContext = createContext<AppContextProps | undefined>(undefined);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [activeTab, setActiveTab] = useState<'sandbox' | 'escrows' | 'iot' | 'payroll' | 'passport' | 'advanced'>('sandbox');
+  const [activeTab, setActiveTab] = useState<'sandbox' | 'escrows' | 'iot' | 'payroll' | 'passport' | 'advanced' | 'disputes'>('sandbox');
   const [appMode, setAppMode] = useState<'local' | 'live'>('local');
   const [isInitialized, setIsInitialized] = useState(false);
   

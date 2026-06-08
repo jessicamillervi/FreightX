@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { 
   Anchor, 
   Database, 
@@ -16,7 +17,8 @@ import {
   ScanQrCode, 
   Award, 
   Loader2,
-  Fingerprint 
+  Fingerprint,
+  BarChart3
 } from 'lucide-react';
 import { useAccount } from 'wagmi';
 
@@ -27,7 +29,9 @@ import {
   ErrorBoundary, 
   LoadingSkeleton, 
   OnboardingHub, 
-  ToastContainer 
+  ToastContainer,
+  ArbitratorRegistry,
+  DisputePanel
 } from '@/components';
 import { 
   SandboxTab, 
@@ -39,6 +43,7 @@ import {
 } from '@/components/tabs';
 
 function Dashboard() {
+  const router = useRouter();
   const { 
     activeTab, 
     setActiveTab, 
@@ -47,7 +52,8 @@ function Dashboard() {
     contracts, 
     handleResetContracts, 
     toasts, 
-    isInitialized 
+    isInitialized,
+    refreshShipmentsList
   } = useAppContext();
 
   const { 
@@ -360,6 +366,16 @@ function Dashboard() {
                 </div>
               </div>
 
+              <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
+                <button
+                  onClick={() => router.push('/analytics')}
+                  className="btn btn-secondary animate-pulse"
+                  style={{ width: '100%', fontSize: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem', borderColor: 'rgba(0,184,212,0.3)', color: 'var(--primary-light)' }}
+                >
+                  <BarChart3 size={14} /> View Enterprise Analytics
+                </button>
+              </div>
+
             </aside>
 
             {/* Main workspace */}
@@ -397,6 +413,9 @@ function Dashboard() {
                 <button onClick={() => setActiveTab('advanced')} className={`tab-btn ${activeTab === 'advanced' ? 'active' : ''}`}>
                   <Award size={16} /> Capital Marketplace
                 </button>
+                <button onClick={() => setActiveTab('disputes')} className={`tab-btn ${activeTab === 'disputes' ? 'active' : ''}`}>
+                  <Scale size={16} /> Dispute Center
+                </button>
               </div>
 
               {/* Tabs Content */}
@@ -406,6 +425,18 @@ function Dashboard() {
               {activeTab === 'payroll' && <PayrollTab />}
               {activeTab === 'passport' && <PassportTab />}
               {activeTab === 'advanced' && <AdvancedTab />}
+              {activeTab === 'disputes' && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                  <ArbitratorRegistry 
+                    currentAddress={signerType === 'web3' && connectedAddress ? connectedAddress : wallet?.address}
+                    onRefreshBalances={() => updateBalances(signerType === 'web3' && connectedAddress ? connectedAddress : wallet?.address || '', signerType)} 
+                  />
+                  <DisputePanel 
+                    currentAddress={signerType === 'web3' && connectedAddress ? connectedAddress : wallet?.address}
+                    onRefreshShipments={() => refreshShipmentsList(appMode, contracts, wallet)} 
+                  />
+                </div>
+              )}
 
             </main>
           </div>

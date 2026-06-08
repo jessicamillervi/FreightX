@@ -10,5 +10,11 @@ export { default as UnifiedDeposit } from './UnifiedDeposit';
 export { default as BoLTemplate } from './BoLTemplate';
 export { default as DocumentUpload } from './DocumentUpload';
 export { default as DocumentVerify } from './DocumentVerify';
+export { ArbitratorRegistry } from './ArbitratorRegistry';
+export { DisputePanel } from './DisputePanel';
+export { PortfolioOverview } from './analytics/PortfolioOverview';
+export { RiskHeatmap } from './analytics/RiskHeatmap';
+export { TradeFinanceChart } from './analytics/TradeFinanceChart';
+export { ReputationRanking } from './analytics/ReputationRanking';
 
 

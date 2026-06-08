@@ -964,6 +964,18 @@ export default function EscrowTab() {
                             >
                               Track Shipments
                             </button>
+                            {s.status !== 'Completed' && s.status !== 'Cancelled' && (
+                              <button 
+                                onClick={() => {
+                                  setSelectedShipmentId(s.id);
+                                  setActiveTab('disputes');
+                                }}
+                                className="btn btn-secondary animate-pulse" 
+                                style={{ padding: '0.35rem 0.65rem', fontSize: '0.75rem', borderColor: 'rgba(255,23,68,0.2)', color: 'var(--danger)' }}
+                              >
+                                Raise Dispute
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
