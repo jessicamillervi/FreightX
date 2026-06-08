@@ -113,6 +113,10 @@ contract FreightEscrowV2 is
 
     address public oracleContract;
 
+    // Multi-Sig Dispute Arbitration
+    address public arbitrationContract;
+    mapping(uint256 => bool) public disputeActive;
+
     struct POLoan {
         uint256 id;
         address supplier;
@@ -170,6 +174,11 @@ contract FreightEscrowV2 is
         _;
     }
 
+    modifier holdSettlement(uint256 _shipmentId) {
+        require(!disputeActive[_shipmentId], "Active dispute hold");
+        _;
+    }
+
     /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
@@ -217,6 +226,75 @@ contract FreightEscrowV2 is
         if (_oracle != address(0)) {
             grantRole(ORACLE_ROLE, _oracle);
         }
+    }
+
+    function setArbitrationContract(address _arbitration) external onlyAdmin whenNotPaused {
+        arbitrationContract = _arbitration;
+    }
+
+    function setDisputeActive(uint256 _shipmentId, bool _active) external {
+        require(msg.sender == arbitrationContract || hasRole(ADMIN_ROLE, msg.sender), "Only arbitrator/admin");
+        require(shipments[_shipmentId].exists, "No shipment");
+        disputeActive[_shipmentId] = _active;
+    }
+
+    function resolveArbitration(
+        uint256 _shipmentId,
+        uint256 _supplierPayout,
+        uint256 _carrierPayout
+    ) external nonReentrant whenNotPaused {
+        require(msg.sender == arbitrationContract, "Only arbitration contract");
+        Shipment storage s = shipments[_shipmentId];
+        require(s.exists, "No shipment");
+        require(s.status != ShipmentStatus.Completed && s.status != ShipmentStatus.Cancelled, "Already resolved");
+
+        // Release USYC if wrapped
+        if (usycWrapped[_shipmentId]) {
+            _redeemUSYC(_shipmentId);
+        }
+
+        uint256 platformFee = ((s.cargoValue + s.shippingFee) * 25) / 10000;
+        uint256 totalEscrow = s.cargoValue + s.shippingFee;
+        
+        // Payout validation
+        uint256 totalPayouts = _supplierPayout + _carrierPayout + platformFee;
+        require(totalPayouts <= totalEscrow, "Payout exceeds escrow");
+
+        // Update state
+        s.status = ShipmentStatus.Completed;
+        s.pickupTimestamp = block.timestamp;
+        s.releasedSupplierAmount = _supplierPayout + s.releasedSupplierAmount;
+        s.releasedCarrierAmount = _carrierPayout;
+        disputeActive[_shipmentId] = false;
+
+        // Transfers
+        if (_supplierPayout > 0) {
+            address beneficiary = shipmentBeneficiary[_shipmentId];
+            if (beneficiary == address(0)) {
+                beneficiary = s.supplier;
+            }
+            require(IERC20(s.token).transfer(beneficiary, _supplierPayout), "Supplier payout failed");
+        }
+        if (_carrierPayout > 0) {
+            require(IERC20(s.token).transfer(s.carrier, _carrierPayout), "Carrier payout failed");
+        }
+        require(IERC20(s.token).transfer(owner, platformFee), "Platform fee failed");
+
+        // Refund any remainder to buyer
+        uint256 remainder = totalEscrow - totalPayouts;
+        if (remainder > 0) {
+            require(IERC20(s.token).transfer(s.buyer, remainder), "Buyer refund failed");
+        }
+
+        IFreightPassport(passportContract).updatePassport(
+            s.passportTokenId,
+            "Settled via Dispute Arbitration",
+            s.destinationPort,
+            1200,
+            true
+        );
+
+        emit ShipmentCompleted(_shipmentId, _supplierPayout, _carrierPayout, platformFee);
     }
 
     // Register IoT Gateway Device for a shipment
@@ -447,7 +525,7 @@ contract FreightEscrowV2 is
         }
     }
 
-    function pickupCargo(uint256 _shipmentId) external nonReentrant whenNotPaused {
+    function pickupCargo(uint256 _shipmentId) external nonReentrant whenNotPaused holdSettlement(_shipmentId) {
         Shipment storage s = shipments[_shipmentId];
         require(s.exists, "No shipment");
         require(s.status == ShipmentStatus.CustomCleared, "Not cleared");

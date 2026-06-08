@@ -31,6 +31,7 @@ import passportArtifact from '../abi/FreightPassport.json';
 import escrowArtifact from '../abi/FreightEscrow.json';
 import usycArtifact from '../abi/MockUSYC.json';
 import documentsArtifact from '../abi/FreightDocuments.json';
+import disputeArtifact from '../abi/DisputeArbitration.json';
 import addresses from '../abi/addresses.json';
 
 // Constants
@@ -50,6 +51,7 @@ export interface BlockchainContracts {
   usyc: Address;
   documents?: Address;
   agent?: Address;
+  dispute?: Address;
 }
 
 export interface ViemWalletClient {
@@ -198,7 +200,8 @@ export function getSavedContracts(): BlockchainContracts | null {
       eurc: EURC_ADDRESS as Address,
       usyc: '0x0000000000000000000000000000000000000000' as Address,
       documents: addrData.FreightDocuments as Address,
-      agent: addrData.FreightAgent as Address
+      agent: addrData.FreightAgent as Address,
+      dispute: addrData.DisputeArbitration as Address
     };
   }
   return null;
@@ -393,6 +396,28 @@ export async function deployContractsOnchain(
   await publicClient.waitForTransactionReceipt({ hash: setDocsOperatorHash });
   onProgress('OPERATOR_ROLE granted to Escrow contract in Documents successfully!');
 
+  // Deploy DisputeArbitration
+  onProgress('Deploying DisputeArbitration (Multi-Sig)...');
+  const disputeHash = await walletClient.deployContract({
+    abi: disputeArtifact.abi,
+    bytecode: disputeArtifact.bytecode.startsWith('0x') ? disputeArtifact.bytecode as `0x${string}` : `0x${disputeArtifact.bytecode}` as `0x${string}`,
+    args: [USDC_ADDRESS, escrowAddress],
+  });
+  onProgress('Waiting for DisputeArbitration confirmation...');
+  const disputeReceipt = await publicClient.waitForTransactionReceipt({ hash: disputeHash });
+  const disputeAddress = disputeReceipt.contractAddress!;
+  onProgress(`DisputeArbitration deployed at ${disputeAddress}`);
+
+  onProgress('Linking contracts: setArbitrationContract in FreightEscrow...');
+  const setArbHash = await walletClient.writeContract({
+    address: escrowAddress,
+    abi: escrowArtifact.abi,
+    functionName: 'setArbitrationContract',
+    args: [disputeAddress],
+  });
+  await publicClient.waitForTransactionReceipt({ hash: setArbHash });
+  onProgress('DisputeArbitration registered in FreightEscrow successfully!');
+
   const result: BlockchainContracts = {
     passport: passportAddress,
     escrow: escrowAddress,
@@ -400,6 +425,7 @@ export async function deployContractsOnchain(
     eurc: EURC_ADDRESS,
     usyc: usycAddress,
     documents: documentsAddress,
+    dispute: disputeAddress,
   };
 
   saveContracts(result);

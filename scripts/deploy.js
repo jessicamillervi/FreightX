@@ -10,6 +10,7 @@ const escrowArtifact = require('../src/abi/FreightEscrow.json');
 const oracleArtifact = require('../src/abi/FreightOracle.json');
 const agentArtifact = require('../src/abi/FreightAgent.json');
 const documentsArtifact = require('../src/abi/FreightDocuments.json');
+const disputeArtifact = require('../src/abi/DisputeArbitration.json');
 
 const USDC_ADDRESS = '0x3600000000000000000000000000000000000000';
 const EURC_ADDRESS = '0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a';
@@ -174,6 +175,28 @@ async function main() {
   await publicClient.waitForTransactionReceipt({ hash: grantEscrowDocsOperatorHash });
   console.log('OPERATOR_ROLE granted to FreightEscrow in FreightDocuments successfully.');
 
+  console.log('\nStep 4.12: Deploying DisputeArbitration...');
+  const disputeHash = await walletClient.deployContract({
+    abi: disputeArtifact.abi,
+    bytecode: disputeArtifact.bytecode.startsWith('0x') ? disputeArtifact.bytecode : `0x${disputeArtifact.bytecode}`,
+    args: [USDC_ADDRESS, escrowAddress],
+  });
+  console.log(`Transaction sent: ${disputeHash}`);
+  console.log('Waiting for transaction finality...');
+  const disputeReceipt = await publicClient.waitForTransactionReceipt({ hash: disputeHash });
+  const disputeAddress = disputeReceipt.contractAddress;
+  console.log(`DisputeArbitration deployed at: ${disputeAddress}`);
+
+  console.log('\nStep 4.13: Registering DisputeArbitration in FreightEscrow...');
+  const setArbHash = await walletClient.writeContract({
+    address: escrowAddress,
+    abi: escrowArtifact.abi,
+    functionName: 'setArbitrationContract',
+    args: [disputeAddress],
+  });
+  await publicClient.waitForTransactionReceipt({ hash: setArbHash });
+  console.log('DisputeArbitration registered in FreightEscrow successfully.');
+
   console.log('\nStep 5: Verifying roles and configurations...');
   const isEscrowOperator = await publicClient.readContract({
     address: passportAddress,
@@ -223,6 +246,13 @@ async function main() {
   });
   console.log(`  - Is Escrow contract registered as Operator in Documents: ${isEscrowDocsOperator}`);
 
+  const registeredArbContract = await publicClient.readContract({
+    address: escrowAddress,
+    abi: escrowArtifact.abi,
+    functionName: 'arbitrationContract',
+  });
+  console.log(`  - Registered Arbitration Contract in Escrow: ${registeredArbContract}`);
+
   // Save deployed addresses
   const addressesPath = path.resolve(__dirname, '../src/abi/addresses.json');
   fs.writeFileSync(
@@ -233,6 +263,7 @@ async function main() {
       FreightOracle: oracleAddress,
       FreightAgent: agentAddress,
       FreightDocuments: documentsAddress,
+      DisputeArbitration: disputeAddress,
       USDC: USDC_ADDRESS,
       chainName: 'Arc Testnet',
       chainId: arcTestnet.id,
