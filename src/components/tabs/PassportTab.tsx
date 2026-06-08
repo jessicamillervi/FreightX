@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { 
   Award, 
   Download, 
@@ -8,21 +8,53 @@ import {
   FileText, 
   Thermometer, 
   ScanQrCode, 
-  FileCode 
+  FileCode,
+  ShieldCheck,
+  ExternalLink,
+  QrCode,
+  Layers,
+  Upload,
+  Barcode
 } from 'lucide-react';
 import { useShipments } from '@/hooks/useShipments';
 import { usePOLoans } from '@/hooks/usePOLoans';
 import { useAppContext } from '@/contexts/AppContext';
-import { type VCData } from '@/lib/types';
+import { type VCData, type Address } from '@/lib/types';
+import { useWallet } from '@/hooks/useWallet';
+import { uploadToIPFS, getIPFSUrl } from '@/lib/ipfs';
+import { getPublicClient, resolveWalletClient } from '@/services/sandbox';
+import documentsArtifact from '@/abi/FreightDocuments.json';
+import passportArtifact from '@/abi/FreightPassport.json';
+import BoLTemplate from '@/components/BoLTemplate';
+import DocumentUpload from '@/components/DocumentUpload';
+
+// Local storage helpers for documents registry
+const getSavedDocumentsForPassport = (passportId: number): any[] => {
+  if (typeof window === 'undefined') return [];
+  const saved = localStorage.getItem(`freightx_docs_${passportId}`);
+  return saved ? JSON.parse(saved) : [];
+};
+
+const saveDocumentsForPassport = (passportId: number, docs: any[]) => {
+  if (typeof window === 'undefined') return;
+  localStorage.setItem(`freightx_docs_${passportId}`, JSON.stringify(docs));
+};
 
 export default function PassportTab() {
-  const { showToast, logTerminal, contracts, setActiveTab } = useAppContext();
+  const { showToast, logTerminal, contracts, setActiveTab, appMode } = useAppContext();
   const { shipments, selectedShipmentId } = useShipments();
   const { poLoans } = usePOLoans();
+  const { wallet } = useWallet();
 
   // Local VC Modal States
   const [showVcModal, setShowVcModal] = useState(false);
   const [vcModalData, setVcModalData] = useState<VCData | null>(null);
+
+  // Document Management States
+  const [docsList, setDocsList] = useState<any[]>([]);
+  const [minting, setMinting] = useState(false);
+  const [uploadTab, setUploadTab] = useState<'bol' | 'upload'>('bol');
+  const [qrModalTokenId, setQrModalTokenId] = useState<string | null>(null);
 
   // Dynamic Credit Passport computation from real shipment/PO data
   const computePassportStats = useCallback((role: 'supplier' | 'buyer' | 'carrier') => {
@@ -138,6 +170,129 @@ export default function PassportTab() {
   const currentShipment = shipments.find(s => s.id === selectedShipmentId);
   const isIceRuined = currentShipment && currentShipment.temperature > 8.0;
 
+  useEffect(() => {
+    if (currentShipment) {
+      setDocsList(getSavedDocumentsForPassport(currentShipment.passportTokenId));
+    } else {
+      setDocsList([]);
+    }
+  }, [currentShipment]);
+
+  const handleMintDocument = async (bolData: {
+    shipper: string;
+    consignee: string;
+    cargoDescription: string;
+    weightKg: string;
+    containerNumber: string;
+  }) => {
+    if (!currentShipment) return;
+    setMinting(true);
+    logTerminal(`Uploading Bill of Lading data to IPFS...`);
+
+    try {
+      // 1. Upload BoL metadata object to IPFS
+      const ipfsResult = await uploadToIPFS(bolData, `BoL-${currentShipment.passportTokenId}.json`);
+      if (!ipfsResult.success || !ipfsResult.cid) {
+        throw new Error(ipfsResult.error || 'Failed to upload metadata to IPFS');
+      }
+      const cid = ipfsResult.cid;
+      logTerminal(`[IPFS] Metadata pinned successfully. CID: ${cid}`);
+
+      let docTokenId = Math.floor(Math.random() * 1000000).toString();
+
+      // Sync mock fallback client-side storage to server-side API Map memory
+      await fetch('/api/documents', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          tokenId: docTokenId,
+          ipfsHash: cid,
+          passportTokenId: currentShipment.passportTokenId.toString(),
+          shipper: bolData.shipper,
+          consignee: bolData.consignee,
+          cargoDescription: bolData.cargoDescription,
+          weightKg: bolData.weightKg,
+          containerNumber: bolData.containerNumber,
+          timestamp: Math.floor(Date.now() / 1000),
+          version: 1
+        })
+      });
+
+      // 2. On-Chain Live Tx Call
+      if (appMode === 'live' && contracts && wallet) {
+        logTerminal(`[Live mode] Invoking mintDocument on FreightDocuments (${contracts.documents})...`);
+        const publicClient = getPublicClient();
+        const walletClient = resolveWalletClient(wallet.privateKey);
+
+        const mintTx = await walletClient.writeContract({
+          address: contracts.documents as Address,
+          abi: documentsArtifact.abi,
+          functionName: 'mintDocument',
+          args: [
+            wallet.address,
+            cid,
+            BigInt(currentShipment.passportTokenId),
+            bolData.shipper,
+            bolData.consignee,
+            bolData.cargoDescription,
+            BigInt(bolData.weightKg),
+            bolData.containerNumber
+          ]
+        });
+        logTerminal(`Submitted mintDocument. Hash: ${mintTx}`);
+        await publicClient.waitForTransactionReceipt({ hash: mintTx });
+
+        logTerminal(`Invoking attachDocument on FreightPassport (${contracts.passport})...`);
+        const attachTx = await walletClient.writeContract({
+          address: contracts.passport as Address,
+          abi: passportArtifact.abi,
+          functionName: 'attachDocument',
+          args: [BigInt(currentShipment.passportTokenId), cid]
+        });
+        await publicClient.waitForTransactionReceipt({ hash: attachTx });
+        logTerminal(`Linked Document CID to Passport Token #${currentShipment.passportTokenId} on-chain!`);
+      }
+
+      // 3. Local Storage fallback registry updates
+      const newDoc = {
+        tokenId: docTokenId,
+        ipfsHash: cid,
+        passportTokenId: currentShipment.passportTokenId.toString(),
+        shipper: bolData.shipper,
+        consignee: bolData.consignee,
+        cargoDescription: bolData.cargoDescription,
+        weightKg: bolData.weightKg,
+        containerNumber: bolData.containerNumber,
+        timestamp: Math.floor(Date.now() / 1000),
+        version: 1
+      };
+
+      const existing = getSavedDocumentsForPassport(currentShipment.passportTokenId);
+      const updated = [...existing, newDoc];
+      saveDocumentsForPassport(currentShipment.passportTokenId, updated);
+      setDocsList(updated);
+      showToast('Document NFT minted & linked to Cargo twin successfully!', 'success');
+    } catch (err) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      logTerminal(`[Document Creation Error] ${errMsg}`);
+      showToast(`Creation failed: ${errMsg}`, 'error');
+    } finally {
+      setMinting(false);
+    }
+  };
+
+  const handleUploadDocumentSuccess = async (cid: string, fileName: string, fileType: string) => {
+    logTerminal(`Uploading external document complete. Minting document NFT...`);
+    const defaultData = {
+      shipper: 'Global Export Supplier',
+      consignee: 'Import Consignee Representative',
+      cargoDescription: `External Document Archive: ${fileName} (${fileType})`,
+      weightKg: '0',
+      containerNumber: 'N/A'
+    };
+    await handleMintDocument(defaultData);
+  };
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       
@@ -219,7 +374,8 @@ export default function PassportTab() {
           </button>
         </div>
       ) : (
-        <div className="grid-cols-2">
+        <>
+          <div className="grid-cols-2">
           
           {/* NFT Passport Card */}
           <div className="glass-panel glass-panel-accent" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', border: '1px solid rgba(0, 210, 255, 0.25)' }}>
@@ -312,6 +468,158 @@ export default function PassportTab() {
             </div>
           </div>
 
+        </div>
+
+        {/* Trade Document Management System Panel */}
+        <div className="glass-panel" style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.75rem' }}>
+            <div>
+              <h3 style={{ fontSize: '1.1rem', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Layers size={20} style={{ color: 'var(--primary)' }} /> Cryptographic Trade Document Manager
+              </h3>
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: '0.2rem 0 0 0' }}>
+                Mint, amend, and query W3C compliant Bill of Lading NFTs linked to Cargo twin #{currentShipment.passportTokenId}.
+              </p>
+            </div>
+            <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.05)', padding: '0.25rem 0.5rem', borderRadius: '4px' }}>
+              Standard: FRTX-DOC ERC-721
+            </span>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: '1.5rem', alignItems: 'start' }}>
+            
+            {/* LEFT SIDE: List of attached documents */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <h4 style={{ margin: 0, fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)' }}>Attached Documents ({docsList.length})</h4>
+              
+              {docsList.length === 0 ? (
+                <div style={{ padding: '2rem', background: 'rgba(0,0,0,0.15)', borderRadius: '8px', border: '1px dashed var(--border-color)', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                  <FileText size={32} style={{ color: 'var(--text-muted)', marginBottom: '0.5rem', opacity: 0.5 }} />
+                  <div style={{ fontSize: '0.8rem', fontWeight: 600 }}>No trade documents attached yet</div>
+                  <span style={{ fontSize: '0.7rem' }}>Generate a Bill of Lading or upload trade compliance certificates to get started.</span>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', maxHeight: '350px', overflowY: 'auto' }}>
+                  {docsList.map((doc, idx) => {
+                    const isBol = doc.cargoDescription.indexOf('External') === -1;
+                    return (
+                      <div key={idx} className="glass-panel" style={{ padding: '0.75rem', border: '1px solid var(--border-color)', display: 'flex', flexDirection: 'column', gap: '0.5rem', background: 'rgba(255,255,255,0.01)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <div>
+                            <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                              {isBol ? 'Bill of Lading' : 'Commercial Invoice'}
+                              <span style={{ display: 'flex', alignItems: 'center', gap: '0.1rem', color: 'var(--success)', fontSize: '0.65rem', fontWeight: 'bold', marginLeft: '0.25rem' }}>
+                                <ShieldCheck size={12} /> VERIFIED
+                              </span>
+                            </span>
+                            <span style={{ fontSize: '0.65rem', color: 'var(--text-secondary)', fontFamily: 'monospace' }}>
+                              Token ID: #{doc.tokenId}
+                            </span>
+                          </div>
+                          <div style={{ display: 'flex', gap: '0.25rem' }}>
+                            <button
+                              onClick={() => setQrModalTokenId(doc.tokenId)}
+                              className="btn btn-secondary flex-center"
+                              style={{ padding: '0.25rem', minWidth: 'auto', width: '28px', height: '28px', borderRadius: '4px' }}
+                              title="Show QR Code"
+                            >
+                              <QrCode size={14} />
+                            </button>
+                            <a
+                              href={`/verify/${doc.tokenId}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="btn btn-primary flex-center"
+                              style={{ padding: '0.25rem', minWidth: 'auto', width: '28px', height: '28px', borderRadius: '4px' }}
+                              title="Verify Document"
+                            >
+                              <ExternalLink size={14} />
+                            </a>
+                          </div>
+                        </div>
+
+                        <div style={{ fontSize: '0.7rem', display: 'flex', flexDirection: 'column', gap: '0.15rem', background: 'rgba(0,0,0,0.2)', padding: '0.4rem', borderRadius: '4px' }}>
+                          <div><span style={{ color: 'var(--text-secondary)' }}>Shipper:</span> <span style={{ color: 'var(--text-main)', fontWeight: 600 }}>{doc.shipper}</span></div>
+                          <div><span style={{ color: 'var(--text-secondary)' }}>Consignee:</span> <span style={{ color: 'var(--text-main)', fontWeight: 600 }}>{doc.consignee}</span></div>
+                          {isBol && (
+                            <>
+                              <div><span style={{ color: 'var(--text-secondary)' }}>Container ID:</span> <span style={{ color: 'var(--text-main)', fontFamily: 'monospace' }}>{doc.containerNumber}</span></div>
+                              <div><span style={{ color: 'var(--text-secondary)' }}>Gross Weight:</span> <span style={{ color: 'var(--text-main)' }}>{Number(doc.weightKg).toLocaleString()} KG</span></div>
+                            </>
+                          )}
+                        </div>
+
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.65rem', color: 'var(--text-secondary)' }}>
+                          <span>IPFS: <code style={{ color: 'var(--primary)' }}>{doc.ipfsHash.substring(0, 10)}...</code></span>
+                          <span>{new Date(doc.timestamp * 1000).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* RIGHT SIDE: Add document form tabs switcher */}
+            <div className="glass-panel" style={{ padding: '1rem', border: '1px solid var(--border-color)', background: 'rgba(0,0,0,0.1)' }}>
+              <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem', marginBottom: '1rem', gap: '1rem' }}>
+                <button
+                  onClick={() => setUploadTab('bol')}
+                  style={{
+                    background: 'none', border: 'none', color: uploadTab === 'bol' ? 'var(--primary)' : 'var(--text-secondary)',
+                    fontWeight: uploadTab === 'bol' ? 700 : 500, fontSize: '0.8rem', padding: '0.25rem 0.5rem', cursor: 'pointer',
+                    borderBottom: uploadTab === 'bol' ? '2px solid var(--primary)' : 'none', transition: 'all 0.2s'
+                  }}
+                >
+                  Generate Bill of Lading (BoL)
+                </button>
+                <button
+                  onClick={() => setUploadTab('upload')}
+                  style={{
+                    background: 'none', border: 'none', color: uploadTab === 'upload' ? 'var(--primary)' : 'var(--text-secondary)',
+                    fontWeight: uploadTab === 'upload' ? 700 : 500, fontSize: '0.8rem', padding: '0.25rem 0.5rem', cursor: 'pointer',
+                    borderBottom: uploadTab === 'upload' ? '2px solid var(--primary)' : 'none', transition: 'all 0.2s'
+                  }}
+                >
+                  Upload Trade Certificate
+                </button>
+              </div>
+
+              {uploadTab === 'bol' ? (
+                <BoLTemplate onSubmit={handleMintDocument} loading={minting} />
+              ) : (
+                <DocumentUpload onUploadSuccess={handleUploadDocumentSuccess} />
+              )}
+            </div>
+
+          </div>
+        </div>
+        </>
+      )}
+
+      {/* QR Code Scan Modal */}
+      {qrModalTokenId && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(6px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="glass-panel" style={{ width: '320px', textAlign: 'center', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600 }}>Compliance Scan Code</h4>
+            <div style={{ background: '#ffffff', padding: '1rem', borderRadius: '8px', display: 'inline-block', margin: '0 auto' }}>
+              <svg width="150" height="150" viewBox="0 0 100 100" style={{ shapeRendering: 'crispEdges' }}>
+                <rect width="100" height="100" fill="#ffffff" />
+                <path d="M0 0h30v30H0zm5 5v20h20V5zm5 5h10v10H10zM70 0h30v30H70zm5 5v20h20V5zm5 5h10v10H80zM0 70h30v30H0zm5 5v20h20V75zm5 5h10v10H10z" fill="#000" />
+                <path d="M35 5h5v10h-5zm10 0h10v5H45zm20 5h5v5h-5zm-30 15h5v15h-5zm15 5h10v5H50zm15 0h5v10h-5zm-15 15h5v5h-5zm20 0h15v5H70zm-35 10h10v5h-10zm25 0h5v10h-5zm15 5h10v5H80zm-45 10h10v5h-10zm15 0h15v5H50zm35 0h5v10h-5zm-55 10h5v5h-5zm15 10h10v5H45zm20 0h5v5h-5z" fill="#000" />
+              </svg>
+            </div>
+            <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', margin: 0 }}>
+              Scan with an iPad or mobile camera at port customs checkpoint to confirm document origin and real-time shipment compliance log.
+            </p>
+            <button
+              onClick={() => setQrModalTokenId(null)}
+              className="btn btn-secondary"
+              style={{ width: '100%' }}
+            >
+              Close Scan Code
+            </button>
+          </div>
         </div>
       )}
 

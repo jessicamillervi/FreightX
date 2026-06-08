@@ -1,4 +1,5 @@
 import { type Address } from 'viem';
+export type { Address };
 
 export interface BlockchainContracts {
   passport: Address;
@@ -6,6 +7,8 @@ export interface BlockchainContracts {
   usdc: Address;
   eurc: Address;
   usyc: Address;
+  documents?: Address;
+  agent?: Address;
 }
 
 export interface ShipmentHistory {

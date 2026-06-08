@@ -30,6 +30,7 @@ const arcTestnet = {
 import passportArtifact from '../abi/FreightPassport.json';
 import escrowArtifact from '../abi/FreightEscrow.json';
 import usycArtifact from '../abi/MockUSYC.json';
+import documentsArtifact from '../abi/FreightDocuments.json';
 import addresses from '../abi/addresses.json';
 
 // Constants
@@ -47,6 +48,8 @@ export interface BlockchainContracts {
   usdc: Address;
   eurc: Address;
   usyc: Address;
+  documents?: Address;
+  agent?: Address;
 }
 
 export interface ViemWalletClient {
@@ -186,13 +189,16 @@ export function getSavedContracts(): BlockchainContracts | null {
       // fallback
     }
   }
-  if (addresses && addresses.FreightEscrow) {
+  const addrData = addresses as any;
+  if (addrData && addrData.FreightEscrow) {
     return {
-      passport: addresses.FreightPassport as Address,
-      escrow: addresses.FreightEscrow as Address,
-      usdc: addresses.USDC as Address,
+      passport: addrData.FreightPassport as Address,
+      escrow: addrData.FreightEscrow as Address,
+      usdc: addrData.USDC as Address,
       eurc: EURC_ADDRESS as Address,
-      usyc: '0x0000000000000000000000000000000000000000' as Address
+      usyc: '0x0000000000000000000000000000000000000000' as Address,
+      documents: addrData.FreightDocuments as Address,
+      agent: addrData.FreightAgent as Address
     };
   }
   return null;
@@ -365,12 +371,35 @@ export async function deployContractsOnchain(
   await publicClient.waitForTransactionReceipt({ hash: setUsycHash });
   onProgress('USYC Vault linked successfully!');
 
+  // Deploy FreightDocuments
+  onProgress('Deploying FreightDocuments (ERC-721)...');
+  const documentsHash = await walletClient.deployContract({
+    abi: documentsArtifact.abi,
+    bytecode: documentsArtifact.bytecode.startsWith('0x') ? documentsArtifact.bytecode as `0x${string}` : `0x${documentsArtifact.bytecode}` as `0x${string}`,
+  });
+  onProgress('Waiting for FreightDocuments confirmation...');
+  const documentsReceipt = await publicClient.waitForTransactionReceipt({ hash: documentsHash });
+  const documentsAddress = documentsReceipt.contractAddress!;
+  onProgress(`FreightDocuments deployed at ${documentsAddress}`);
+
+  onProgress('Linking contracts: grant OPERATOR_ROLE to FreightEscrow in FreightDocuments...');
+  const OPERATOR_ROLE = keccak256(encodePacked(['string'], ['OPERATOR_ROLE']));
+  const setDocsOperatorHash = await walletClient.writeContract({
+    address: documentsAddress,
+    abi: documentsArtifact.abi,
+    functionName: 'grantRole',
+    args: [OPERATOR_ROLE, escrowAddress],
+  });
+  await publicClient.waitForTransactionReceipt({ hash: setDocsOperatorHash });
+  onProgress('OPERATOR_ROLE granted to Escrow contract in Documents successfully!');
+
   const result: BlockchainContracts = {
     passport: passportAddress,
     escrow: escrowAddress,
     usdc: USDC_ADDRESS,
     eurc: EURC_ADDRESS,
     usyc: usycAddress,
+    documents: documentsAddress,
   };
 
   saveContracts(result);
