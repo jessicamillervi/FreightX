@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: freightx-app
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PRIVATE_KEY=${PRIVATE_KEY}
+      - ARC_TESTNET_RPC_URL=${ARC_TESTNET_RPC_URL:-https://rpc.testnet.arc.network}
+      - NEXT_PUBLIC_CIRCLE_CLIENT_KEY=${NEXT_PUBLIC_CIRCLE_CLIENT_KEY}
+      - NEXT_PUBLIC_CIRCLE_CLIENT_URL=${NEXT_PUBLIC_CIRCLE_CLIENT_URL:-https://api.circle.com/v1/w3s}
+      - CIRCLE_API_KEY=${CIRCLE_API_KEY}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY}
+      - SUPABASE_SERVICE_ROLE_KEY=${SUPABASE_SERVICE_ROLE_KEY}
+      - GATEWAY_SELLER_ADDRESS=${GATEWAY_SELLER_ADDRESS}
+      - STABLEFX_API_KEY=${STABLEFX_API_KEY}
+      - NEXT_PUBLIC_PINATA_JWT=${NEXT_PUBLIC_PINATA_JWT}
+      - NEXT_PUBLIC_PINATA_API_KEY=${NEXT_PUBLIC_PINATA_API_KEY}
+      - NEXT_PUBLIC_PINATA_SECRET_KEY=${NEXT_PUBLIC_PINATA_SECRET_KEY}
+      - CIRCLE_WEBHOOK_SECRET=${CIRCLE_WEBHOOK_SECRET}
+    depends_on:
+      - db
+
+  db:
+    image: postgres:15-alpine
+    container_name: freightx-db
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgrespassword
+      - POSTGRES_DB=freightx
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./supabase_schema.sql:/docker-entrypoint-initdb.d/init.sql
+
+volumes:
+  pgdata:
+    driver: local
