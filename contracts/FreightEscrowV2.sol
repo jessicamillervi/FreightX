@@ -451,7 +451,7 @@ contract FreightEscrowV2 is
         Shipment storage s = shipments[_shipmentId];
         require(s.exists, "No shipment");
         require(s.status == ShipmentStatus.CustomCleared, "Not cleared");
-        require(msg.sender == s.buyer, "Only buyer");
+        require(msg.sender == s.buyer || hasRole(ORACLE_ROLE, msg.sender), "Only buyer or oracle");
 
         if (usycWrapped[_shipmentId]) {
             _redeemUSYC(_shipmentId);

@@ -8,6 +8,7 @@ const path = require('path');
 const passportArtifact = require('../src/abi/FreightPassport.json');
 const escrowArtifact = require('../src/abi/FreightEscrow.json');
 const oracleArtifact = require('../src/abi/FreightOracle.json');
+const agentArtifact = require('../src/abi/FreightAgent.json');
 
 const USDC_ADDRESS = '0x3600000000000000000000000000000000000000';
 const EURC_ADDRESS = '0x89B50855Aa3bE2F677cD6303Cec089B5F319D72a';
@@ -119,6 +120,38 @@ async function main() {
   await publicClient.waitForTransactionReceipt({ hash: setOracleHash });
   console.log('Reference set in FreightEscrow successfully (grants ORACLE_ROLE to oracle contract).');
 
+  console.log('\nStep 4.7: Deploying FreightAgent...');
+  const agentHash = await walletClient.deployContract({
+    abi: agentArtifact.abi,
+    bytecode: agentArtifact.bytecode.startsWith('0x') ? agentArtifact.bytecode : `0x${agentArtifact.bytecode}`,
+    args: ['FreightX Logistics Coordinator', account.address, escrowAddress],
+  });
+  console.log(`Transaction sent: ${agentHash}`);
+  console.log('Waiting for transaction finality...');
+  const agentReceipt = await publicClient.waitForTransactionReceipt({ hash: agentHash });
+  const agentAddress = agentReceipt.contractAddress;
+  console.log(`FreightAgent deployed at: ${agentAddress}`);
+
+  console.log('\nStep 4.8: Registering FreightAgent ERC-8004 Identity...');
+  const registerHash = await walletClient.writeContract({
+    address: agentAddress,
+    abi: agentArtifact.abi,
+    functionName: 'registerAgent',
+    args: ['ipfs://QmT123AgentMetadata456'],
+  });
+  await publicClient.waitForTransactionReceipt({ hash: registerHash });
+  console.log('Agent identity registered with IdentityRegistry.');
+
+  console.log('\nStep 4.9: Granting ORACLE_ROLE to FreightAgent contract in FreightEscrow...');
+  const grantAgentOracleHash = await walletClient.writeContract({
+    address: escrowAddress,
+    abi: escrowArtifact.abi,
+    functionName: 'grantRole',
+    args: [ORACLE_ROLE, agentAddress],
+  });
+  await publicClient.waitForTransactionReceipt({ hash: grantAgentOracleHash });
+  console.log('ORACLE_ROLE granted to FreightAgent successfully.');
+
   console.log('\nStep 5: Verifying roles and configurations...');
   const isEscrowOperator = await publicClient.readContract({
     address: passportAddress,
@@ -152,6 +185,14 @@ async function main() {
   });
   console.log(`  - Is Oracle contract registered as Oracle in Escrow: ${isOracleContractOracle}`);
 
+  const isAgentContractOracle = await publicClient.readContract({
+    address: escrowAddress,
+    abi: escrowArtifact.abi,
+    functionName: 'hasRole',
+    args: [ORACLE_ROLE, agentAddress],
+  });
+  console.log(`  - Is Agent contract registered as Oracle in Escrow: ${isAgentContractOracle}`);
+
   // Save deployed addresses
   const addressesPath = path.resolve(__dirname, '../src/abi/addresses.json');
   fs.writeFileSync(
@@ -160,6 +201,7 @@ async function main() {
       FreightPassport: passportAddress,
       FreightEscrow: escrowAddress,
       FreightOracle: oracleAddress,
+      FreightAgent: agentAddress,
       USDC: USDC_ADDRESS,
       chainName: 'Arc Testnet',
       chainId: arcTestnet.id,
