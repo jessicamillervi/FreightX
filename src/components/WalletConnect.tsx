@@ -113,7 +113,7 @@ export function WalletConnect() {
   };
 
   return (
-    <div className="bg-[#111318]/90 backdrop-blur-xl border border-white/5 rounded-3xl p-6 shadow-2xl relative overflow-hidden">
+    <div className="bg-[#111318]/90 backdrop-blur-xl border border-white/5 rounded-3xl p-6 pb-8 shadow-2xl relative overflow-hidden">
       <div className="absolute top-0 right-0 w-80 h-80 bg-blue-500/5 rounded-full filter blur-[100px] pointer-events-none" />
       <div className="absolute bottom-0 left-0 w-80 h-80 bg-emerald-500/5 rounded-full filter blur-[100px] pointer-events-none" />
 
@@ -213,7 +213,13 @@ export function WalletConnect() {
       </div>
 
       {/* Active Selection Details Pane */}
-      <div className="bg-white/5 border border-white/5 rounded-2xl p-5">
+      <div className={`bg-white/5 border rounded-2xl p-5 pb-6 transition-all ${
+        signerType === 'circle' 
+          ? 'border-blue-500/20' 
+          : signerType === 'web3' 
+            ? 'border-purple-500/20' 
+            : 'border-amber-500/20'
+      }`}>
         {/* Passkey Panel */}
         {signerType === 'circle' && (
           <div>
