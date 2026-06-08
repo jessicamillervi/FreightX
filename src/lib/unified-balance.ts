@@ -75,6 +75,7 @@ export function createViemAdapter(
   browserWalletClient: any
 ) {
   const { publicClient, walletClient } = getViemClients(chain, signerType, wallet, browserWalletClient);
+  const viemChain = getViemChain(chain);
   return new ViemAdapter(
     {
       getPublicClient: () => publicClient as any,
@@ -82,7 +83,7 @@ export function createViemAdapter(
     },
     {
       addressContext: 'user-controlled',
-      supportedChains: [chain],
+      supportedChains: [viemChain],
     }
   );
 }

@@ -2,6 +2,7 @@
 import { AppKit } from "@circle-fin/app-kit";
 import { ViemAdapter } from "@circle-fin/adapter-viem-v2";
 import { decodeEventLog } from "viem";
+import { getViemChain } from "./unified-balance";
 
 const messageSentAbi = {
   name: 'MessageSent',
@@ -45,7 +46,7 @@ export async function executeBridge(params: BridgeParams) {
       getWalletClient: () => sourceWalletClient as any,
     }, {
       addressContext: 'user-controlled',
-      supportedChains: [sourceChain]
+      supportedChains: [getViemChain(sourceChain)]
     });
 
     // Create destination adapter (Arc Testnet)
@@ -54,7 +55,7 @@ export async function executeBridge(params: BridgeParams) {
       getWalletClient: () => destWalletClient as any,
     }, {
       addressContext: 'user-controlled',
-      supportedChains: ['Arc_Testnet']
+      supportedChains: [getViemChain('Arc_Testnet')]
     });
 
     const kit = new AppKit();
