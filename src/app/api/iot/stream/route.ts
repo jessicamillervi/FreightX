@@ -24,7 +24,7 @@ export async function GET(request: NextRequest) {
       const keepAliveInterval = setInterval(() => {
         try {
           controller.enqueue(encoder.encode(': keep-alive\n\n'));
-        } catch (err) {
+        } catch {
           // Suppress errors if connection is closing
         }
       }, 15000);

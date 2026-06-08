@@ -58,16 +58,36 @@ export async function POST(req: Request) {
     }
 
     const dbRow = toSnakeCase(body) as Record<string, unknown>;
-    const { data, error } = await supabase.from('shipments').insert(dbRow).select().single();
+    const attemptRow = { ...dbRow };
+
+    let { data, error } = await supabase.from('shipments').insert(attemptRow).select().single();
+
+    if (error && error.message?.includes('column') && error.message?.includes('does not exist')) {
+      delete attemptRow.locked_fx_rate;
+      const secondAttempt = await supabase.from('shipments').insert(attemptRow).select().single();
+      data = secondAttempt.data;
+      error = secondAttempt.error;
+    }
 
     if (error) {
       // If shipment already exists, update/upsert instead
-      const { data: upsertData, error: upsertErr } = await supabase
+      let { data: upsertData, error: upsertErr } = await supabase
         .from('shipments')
-        .upsert(dbRow)
+        .upsert(attemptRow)
         .select()
         .single();
         
+      if (upsertErr && upsertErr.message?.includes('column') && upsertErr.message?.includes('does not exist')) {
+        delete attemptRow.locked_fx_rate;
+        const secondUpsert = await supabase
+          .from('shipments')
+          .upsert(attemptRow)
+          .select()
+          .single();
+        upsertData = secondUpsert.data;
+        upsertErr = secondUpsert.error;
+      }
+
       if (upsertErr) {
         return NextResponse.json({ error: upsertErr.message }, { status: 500 });
       }

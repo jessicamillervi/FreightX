@@ -17,6 +17,8 @@ import {
 import { type ShipmentData, type BlockchainContracts, type WalletInfo, type POLoanData, type Toast, type VCData } from '@/lib/types';
 import { DEFAULT_MOCK_SHIPMENTS } from '@/lib/constants';
 import { type CircleWalletSession, getSavedSession } from '@/lib/circle-wallet';
+import { fetchUnifiedBalances } from '@/lib/unified-balance';
+
 
 
 interface AppContextProps {
@@ -74,6 +76,10 @@ interface AppContextProps {
   userSession: { walletAddress: string; walletType: string } | null;
   setUserSession: (session: { walletAddress: string; walletType: string } | null) => void;
   
+  unifiedBalance: { confirmed: number; pending: number };
+  unifiedBreakdown: Array<{ chain: string; confirmed: number; pending: number }>;
+  updateUnifiedBalance: (address: string) => Promise<void>;
+  
   updateBalances: (addr: string, type: 'sandbox' | 'web3' | 'circle') => Promise<void>;
   refreshShipmentsList: (mode: 'live' | 'local', cList: BlockchainContracts | null, _wInfo: WalletInfo | null) => Promise<void>;
   refreshPOLoansList: (mode: 'live' | 'local', cList: BlockchainContracts | null) => Promise<void>;
@@ -100,6 +106,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [deployStatus, setDeployStatus] = useState('');
   const [isRefreshingBalances, setIsRefreshingBalances] = useState(false);
   const [userSession, setUserSession] = useState<{ walletAddress: string; walletType: string } | null>(null);
+
+  const [unifiedBalance, setUnifiedBalance] = useState({ confirmed: 0, pending: 0 });
+  const [unifiedBreakdown, setUnifiedBreakdown] = useState<Array<{ chain: string; confirmed: number; pending: number }>>([]);
+
 
   // Wagmi/RainbowKit hooks
   const { address: connectedAddress, isConnected } = useAccount();
@@ -173,6 +183,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (type === 'sandbox') setIsRefreshingBalances(false);
     }
   };
+
+  const updateUnifiedBalance = useCallback(async (addr: string) => {
+    if (!addr) return;
+    try {
+      const res = await fetchUnifiedBalances(addr);
+      if (res.success) {
+        setUnifiedBalance({ confirmed: res.totalConfirmed, pending: res.totalPending });
+        setUnifiedBreakdown(res.breakdown || []);
+      }
+    } catch (e) {
+      console.error('Failed to update unified balances', e);
+    }
+  }, []);
+
 
   // Fetch shipments from API, triggering event sync first if in live mode
   const refreshShipmentsList = async (
@@ -419,6 +443,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       isConnected,
       browserWalletClient,
       
+      unifiedBalance,
+      unifiedBreakdown,
+      updateUnifiedBalance,
       updateBalances,
       refreshShipmentsList,
       refreshPOLoansList,

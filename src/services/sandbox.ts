@@ -105,6 +105,7 @@ export interface ShipmentData {
   // Advanced: CCTP Cross-Chain
   cctpSourceDomain?: number;
   cctpSourceTxHash?: string;
+  lockedFxRate?: number;
 }
 
 export interface POLoanData {

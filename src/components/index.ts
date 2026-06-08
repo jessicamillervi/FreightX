@@ -5,3 +5,6 @@ export { ToastContainer, type Toast } from './ToastContainer';
 export { OnboardingHub } from './OnboardingHub';
 export { WalletConnect } from './WalletConnect';
 export { default as IoTRealtime } from './IoTRealtime';
+export { default as UnifiedBalance } from './UnifiedBalance';
+export { default as UnifiedDeposit } from './UnifiedDeposit';
+

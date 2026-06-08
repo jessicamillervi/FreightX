@@ -21,7 +21,10 @@ export function useWallet() {
     handleResetContracts,
     connectedAddress,
     isConnected,
-    browserWalletClient
+    browserWalletClient,
+    unifiedBalance,
+    unifiedBreakdown,
+    updateUnifiedBalance
   } = useAppContext();
 
   return {
@@ -44,6 +47,9 @@ export function useWallet() {
     handleResetContracts,
     connectedAddress,
     isConnected,
-    browserWalletClient
+    browserWalletClient,
+    unifiedBalance,
+    unifiedBreakdown,
+    updateUnifiedBalance
   };
 }

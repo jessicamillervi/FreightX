@@ -56,6 +56,7 @@ export interface ShipmentData {
   usycShares?: number;
   cctpSourceDomain?: number;
   cctpSourceTxHash?: string;
+  lockedFxRate?: number;
 }
 
 export interface POLoanData {

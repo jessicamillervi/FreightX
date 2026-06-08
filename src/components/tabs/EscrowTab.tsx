@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { type WalletClient } from 'viem';
 import { Box, Anchor, TrendingUp, Loader2, Landmark, Check, Coins } from 'lucide-react';
+import { spendFromUnifiedBalance } from '@/lib/unified-balance';
 import { useWallet } from '@/hooks/useWallet';
 import { useShipments } from '@/hooks/useShipments';
 import { usePOLoans } from '@/hooks/usePOLoans';
@@ -38,7 +39,9 @@ export default function EscrowTab() {
     demurrageRatePerHour: '15',
     tokenType: 'USDC' as 'USDC' | 'EURC',
     poId: '',
-    cctpPending: false
+    cctpPending: false,
+    useUnifiedBalance: false,
+    unifiedSourceChain: 'Ethereum_Sepolia' as 'Ethereum_Sepolia' | 'Arbitrum_Sepolia'
   });
 
   // PO Request Form
@@ -51,8 +54,41 @@ export default function EscrowTab() {
 
   // StableFX Calculator
   const [stableFxInputAed, setStableFxInputAed] = useState('1000');
-  const convertedUsdc = parseFloat(stableFxInputAed) / 3.67;
-  const convertedEurc = parseFloat(stableFxInputAed) / 3.98;
+  const [aedToUsdcRate, setAedToUsdcRate] = useState(1 / 3.67);
+  const [aedToEurcRate, setAedToEurcRate] = useState(1 / 3.98);
+  const [eurcToUsdcRate, setEurcToUsdcRate] = useState(1.087);
+
+  useEffect(() => {
+    const fetchAedRates = async () => {
+      try {
+        const [resUsdc, resEurc, resEurcUsdc] = await Promise.all([
+          fetch('/api/fx/rates?from=AED&to=USDC&amount=1'),
+          fetch('/api/fx/rates?from=AED&to=EURC&amount=1'),
+          fetch('/api/fx/rates?from=EURC&to=USDC&amount=1')
+        ]);
+        const dataUsdc = await resUsdc.json();
+        const dataEurc = await resEurc.json();
+        const dataEurcUsdc = await resEurcUsdc.json();
+        if (dataUsdc.success && dataUsdc.quote) {
+          setAedToUsdcRate(dataUsdc.quote.rate);
+        }
+        if (dataEurc.success && dataEurc.quote) {
+          setAedToEurcRate(dataEurc.quote.rate);
+        }
+        if (dataEurcUsdc.success && dataEurcUsdc.quote) {
+          setEurcToUsdcRate(dataEurcUsdc.quote.rate);
+        }
+      } catch (err) {
+        console.warn('Failed to fetch AED StableFX rates:', err);
+      }
+    };
+    fetchAedRates();
+    const interval = setInterval(fetchAedRates, 15000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const convertedUsdc = parseFloat(stableFxInputAed) * aedToUsdcRate;
+  const convertedEurc = parseFloat(stableFxInputAed) * aedToEurcRate;
 
   const handleCreateShipment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,6 +121,8 @@ export default function EscrowTab() {
           logTerminal(`[PO REPAYMENT WATERFALL] PO Loan #${poIdNum} Repayment amount (${po.repaymentAmount} ${formData.tokenType}) sent directly to Investor (${po.investor.slice(0,8)}...).`);
         }
       }
+
+      const activeFxRate = formData.tokenType === 'EURC' ? aedToEurcRate : aedToUsdcRate;
 
       const newShipment: ShipmentData = {
         id: newId,
@@ -119,14 +157,15 @@ export default function EscrowTab() {
         factoringActive: false,
         token: tokenAddr,
         poId: hasPOLoan ? poIdNum : undefined,
-        hasPOLoan: hasPOLoan
+        hasPOLoan: hasPOLoan,
+        lockedFxRate: activeFxRate
       };
 
       const updated = [newShipment, ...shipments];
       setShipments(updated);
       saveLocalShipments(updated);
       setSelectedShipmentId(newId);
-      logTerminal(`Local Shipment #${newId} Escrow created. Deposited ${val + fee} ${formData.tokenType}.`);
+      logTerminal(`Local Shipment #${newId} Escrow created. Deposited ${val + fee} ${formData.tokenType}. Locked FX: 1 AED = ${activeFxRate.toFixed(4)} ${formData.tokenType}`);
       showToast('Local Cargo Escrow Created!', 'success');
       setIsCreatingShipment(false);
       setCreateProgress('');
@@ -143,6 +182,8 @@ export default function EscrowTab() {
         setIsCreatingShipment(false);
         return;
       }
+
+      const activeFxRate = formData.tokenType === 'EURC' ? aedToEurcRate : aedToUsdcRate;
 
       if (formData.cctpPending) {
         try {
@@ -166,6 +207,46 @@ export default function EscrowTab() {
               logTerminal(status);
             }
           );
+
+          // Pre-sync metadata to backend with locked rate
+          await fetch('/api/shipments', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${wallet.address}`
+            },
+            body: JSON.stringify({
+              id: shipmentId,
+              buyer: signerType === 'web3' && connectedAddress ? connectedAddress : wallet.address,
+              supplier: formData.supplier,
+              carrier: formData.carrier,
+              cargoValue: val,
+              shippingFee: fee,
+              releasedSupplierAmount: 0,
+              releasedCarrierAmount: 0,
+              departurePort: formData.departurePort,
+              destinationPort: formData.destinationPort,
+              status: 'Created',
+              arrivedTimestamp: 0,
+              customClearanceTimestamp: 0,
+              pickupTimestamp: 0,
+              freeTimeHours: freeTime,
+              demurrageRatePerHour: rate,
+              demurragePenaltyPaid: 0,
+              passportTokenId: 0,
+              temperature: 4.2,
+              location: formData.departurePort,
+              history: [
+                { timestamp: Date.now(), status: 'Created', location: formData.departurePort, temperature: 4.2 }
+              ],
+              createdTimestamp: Date.now(),
+              token: tokenAddr,
+              txHash,
+              onChain: true,
+              lockedFxRate: activeFxRate,
+              cctpSourceDomain: 3
+            })
+          }).catch(err => console.error('Failed to pre-sync metadata:', err));
 
           showToast(`Onchain Shipment #${shipmentId} Created (Pending CCTP)!`, 'success');
           logTerminal(`Tx Confirmed: ${txHash.slice(0, 15)}... Pending CCTP Funding: ${val + fee} ${formData.tokenType}`);
@@ -195,6 +276,27 @@ export default function EscrowTab() {
       }
 
       try {
+        if (formData.useUnifiedBalance) {
+          setCreateProgress('Spending from Unified Balance...');
+          logTerminal(`Spending ${(val + fee)} USDC from Unified Balance on ${formData.unifiedSourceChain} to Arc Testnet...`);
+          const recipient = signerType === 'web3' && connectedAddress ? connectedAddress : wallet.address;
+          const spendRes = await spendFromUnifiedBalance(
+            formData.unifiedSourceChain,
+            'Arc_Testnet',
+            recipient,
+            (val + fee).toString(),
+            signerType,
+            wallet,
+            browserWalletClient
+          );
+          if (!spendRes.success) {
+            throw new Error(`Unified Balance spend failed: ${spendRes.error}`);
+          }
+          logTerminal(`[Unified Balance Spend Success] Tx: ${spendRes.txHash}`);
+          setCreateProgress('Unified Balance spend confirmed. Creating shipment escrow...');
+          await new Promise(r => setTimeout(r, 2000));
+        }
+
         const signer = (signerType === 'web3' && browserWalletClient ? browserWalletClient : wallet.privateKey) as string | WalletClient;
         const { shipmentId, txHash } = await createShipmentOnchain(
           signer,
@@ -217,6 +319,45 @@ export default function EscrowTab() {
           }
         );
 
+        // Pre-sync metadata to backend with locked rate
+        await fetch('/api/shipments', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${wallet.address}`
+          },
+          body: JSON.stringify({
+            id: shipmentId,
+            buyer: signerType === 'web3' && connectedAddress ? connectedAddress : wallet.address,
+            supplier: formData.supplier,
+            carrier: formData.carrier,
+            cargoValue: val,
+            shippingFee: fee,
+            releasedSupplierAmount: 0,
+            releasedCarrierAmount: 0,
+            departurePort: formData.departurePort,
+            destinationPort: formData.destinationPort,
+            status: 'Created',
+            arrivedTimestamp: 0,
+            customClearanceTimestamp: 0,
+            pickupTimestamp: 0,
+            freeTimeHours: freeTime,
+            demurrageRatePerHour: rate,
+            demurragePenaltyPaid: 0,
+            passportTokenId: 0,
+            temperature: 4.2,
+            location: formData.departurePort,
+            history: [
+              { timestamp: Date.now(), status: 'Created', location: formData.departurePort, temperature: 4.2 }
+            ],
+            createdTimestamp: Date.now(),
+            token: tokenAddr,
+            txHash,
+            onChain: true,
+            lockedFxRate: activeFxRate
+          })
+        }).catch(err => console.error('Failed to pre-sync metadata:', err));
+
         showToast(`Onchain Shipment #${shipmentId} Created!`, 'success');
         logTerminal(`Tx Confirmed: ${txHash.slice(0, 15)}... (GTV: ${val + fee} ${formData.tokenType})`);
         
@@ -231,7 +372,8 @@ export default function EscrowTab() {
         setFormData({
           ...formData,
           poId: '',
-          cctpPending: false
+          cctpPending: false,
+          useUnifiedBalance: false
         });
       } catch (err) {
         const errMsg = err instanceof Error ? err.message : String(err);
@@ -592,13 +734,43 @@ export default function EscrowTab() {
                   type="checkbox"
                   id="cctpPending"
                   checked={formData.cctpPending}
-                  onChange={(e) => setFormData({...formData, cctpPending: e.target.checked})}
+                  onChange={(e) => setFormData({...formData, cctpPending: e.target.checked, useUnifiedBalance: false})}
                   disabled={formData.poId !== ''}
                   style={{ width: 'auto', cursor: 'pointer' }}
                 />
                 <label htmlFor="cctpPending" style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', cursor: 'pointer' }}>
                   Enable CCTP Cross-Chain Funding (Deposit from Sepolia/Arbitrum)
                 </label>
+              </div>
+
+              <div className="form-group" style={{ display: appMode === 'live' ? 'block' : 'none', marginTop: '0.75rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+                  <input 
+                    type="checkbox"
+                    id="useUnifiedBalance"
+                    checked={formData.useUnifiedBalance}
+                    onChange={(e) => setFormData({...formData, useUnifiedBalance: e.target.checked, cctpPending: false})}
+                    disabled={formData.poId !== '' || formData.tokenType === 'EURC'}
+                    style={{ width: 'auto', cursor: 'pointer' }}
+                  />
+                  <label htmlFor="useUnifiedBalance" style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', cursor: 'pointer' }}>
+                    Fund Escrow with App Kit Unified Balance (USDC only)
+                  </label>
+                </div>
+                {formData.useUnifiedBalance && (
+                  <div style={{ paddingLeft: '1.25rem' }}>
+                    <label style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.25rem' }}>Unified Balance Source Chain</label>
+                    <select
+                      className="form-input"
+                      style={{ padding: '0.35rem 0.5rem', fontSize: '0.75rem', width: '200px' }}
+                      value={formData.unifiedSourceChain}
+                      onChange={(e) => setFormData({...formData, unifiedSourceChain: e.target.value as 'Ethereum_Sepolia' | 'Arbitrum_Sepolia'})}
+                    >
+                      <option value="Ethereum_Sepolia">Ethereum Sepolia</option>
+                      <option value="Arbitrum_Sepolia">Arbitrum Sepolia</option>
+                    </select>
+                  </div>
+                )}
               </div>
 
               <div style={{ marginTop: '1.25rem', display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
@@ -632,15 +804,15 @@ export default function EscrowTab() {
             <div style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span>EURC / USDC Oracle Rate:</span>
-                <strong>1.085 USDC</strong>
+                <strong>{eurcToUsdcRate.toFixed(4)} USDC</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span>AED / USDC Oracle Rate:</span>
-                <strong>0.272 USDC</strong>
+                <strong>{aedToUsdcRate.toFixed(4)} USDC</strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                 <span>AED / EURC Oracle Rate:</span>
-                <strong>0.251 EURC</strong>
+                <strong>{aedToEurcRate.toFixed(4)} EURC</strong>
               </div>
             </div>
 
@@ -758,6 +930,11 @@ export default function EscrowTab() {
                         <td style={{ fontWeight: 600 }}>
                           {(s.cargoValue + s.shippingFee).toLocaleString()} {symbol}
                           <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Cargo: {s.cargoValue.toLocaleString()} | Shipping: {s.shippingFee.toLocaleString()}</div>
+                          {s.lockedFxRate && (
+                            <div style={{ fontSize: '0.65rem', color: 'var(--success)', marginTop: '2px', fontWeight: 'bold' }}>
+                              Locked FX: 1 AED = {s.lockedFxRate.toFixed(4)} {symbol}
+                            </div>
+                          )}
                         </td>
                         <td>
                           <div style={{ fontSize: '0.75rem' }}>Supplier: {s.releasedSupplierAmount.toLocaleString()} {symbol}</div>

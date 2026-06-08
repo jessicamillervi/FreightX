@@ -4,7 +4,7 @@ import React from 'react';
 import { ShieldCheck, Clock, Loader2, Database, Compass } from 'lucide-react';
 import { useWallet } from '@/hooks/useWallet';
 import { useAppContext } from '@/contexts/AppContext';
-import { WalletConnect } from '@/components';
+import { WalletConnect, UnifiedBalance } from '@/components';
 
 export default function SandboxTab() {
   const { appMode, handleModeChange, setActiveTab } = useAppContext();
@@ -13,6 +13,8 @@ export default function SandboxTab() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
       <WalletConnect />
+      
+      {appMode === 'live' && <UnifiedBalance />}
       
       <div className="glass-panel">
         <h2 style={{ fontSize: '1.3rem', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
