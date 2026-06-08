@@ -4,34 +4,15 @@ import React, { useState } from 'react';
 import { useAppContext } from '@/contexts/AppContext';
 import { useCircleWallet } from '@/hooks/useCircleWallet';
 import { 
-  Key, 
-  ShieldCheck, 
-  Wallet, 
-  Fingerprint, 
-  Copy, 
-  Check, 
-  LogOut, 
-  UserPlus, 
-  LogIn, 
-  Info,
-  RefreshCw,
-  ExternalLink
+  Key, ShieldCheck, Wallet, Fingerprint, Copy, Check, LogOut, 
+  UserPlus, LogIn, Info, RefreshCw, ExternalLink 
 } from 'lucide-react';
 import { ConnectButton } from '@rainbow-me/rainbowkit';
 
 export function WalletConnect() {
   const {
-    signerType,
-    setSignerType,
-    wallet,
-    sandboxBalances,
-    web3Balances,
-    circleSession,
-    setCircleSession,
-    circleBalances,
-    logTerminal,
-    showToast,
-    updateBalances
+    signerType, setSignerType, wallet, sandboxBalances, web3Balances,
+    circleSession, setCircleSession, circleBalances, logTerminal, showToast, updateBalances
   } = useAppContext();
 
   const { register, login, logout, loading } = useCircleWallet();
@@ -83,16 +64,13 @@ export function WalletConnect() {
   const handleDisconnectCircle = () => {
     logout();
     setCircleSession(null);
-    if (signerType === 'circle') {
-      setSignerType('sandbox');
-    }
+    if (signerType === 'circle') setSignerType('sandbox');
     logTerminal('Passkey Wallet disconnected.');
     showToast('Passkey Wallet disconnected.', 'info');
   };
 
   const handleRegenerateSandbox = () => {
     localStorage.removeItem('freightx_sandbox_wallet');
-    // Reloading wallet will automatically create a new keypair
     window.location.reload();
   };
 
@@ -112,352 +90,228 @@ export function WalletConnect() {
     }
   };
 
-  return (
-    <div className="bg-[#111318]/90 backdrop-blur-xl border border-white/5 rounded-3xl p-6 pb-8 shadow-2xl relative overflow-hidden">
-      <div className="absolute top-0 right-0 w-80 h-80 bg-blue-500/5 rounded-full filter blur-[100px] pointer-events-none" />
-      <div className="absolute bottom-0 left-0 w-80 h-80 bg-emerald-500/5 rounded-full filter blur-[100px] pointer-events-none" />
+  const tabStyle = (active: boolean, color: string): React.CSSProperties => ({
+    display: 'flex', flexDirection: 'column', alignItems: 'flex-start', textAlign: 'left' as const,
+    padding: '1rem', borderRadius: '16px', border: '1px solid',
+    cursor: 'pointer', transition: 'all 0.2s',
+    background: active ? `${color}15` : 'rgba(255,255,255,0.03)',
+    borderColor: active ? `${color}66` : 'rgba(255,255,255,0.05)',
+    boxShadow: active ? `0 8px 24px ${color}10` : 'none',
+  });
 
+  const balanceCard: React.CSSProperties = {
+    background: 'rgba(255,255,255,0.03)', padding: '0.875rem', borderRadius: '12px',
+    border: '1px solid rgba(255,255,255,0.05)', textAlign: 'center',
+  };
+
+  const detailBorderColor = signerType === 'circle' ? 'rgba(59,130,246,0.2)' 
+    : signerType === 'web3' ? 'rgba(168,85,247,0.2)' : 'rgba(245,158,11,0.2)';
+
+  return (
+    <div className="glass-panel" style={{ position: 'relative', overflow: 'hidden' }}>
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-6 border-b border-white/5">
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', paddingBottom: '1.5rem', borderBottom: '1px solid var(--border-color)', flexWrap: 'wrap', gap: '1rem' }}>
         <div>
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <ShieldCheck className="text-blue-400" size={22} />
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <ShieldCheck style={{ color: 'var(--primary)' }} size={22} />
             FreightX Trade Wallet Manager
           </h2>
-          <p className="text-sm text-gray-400 mt-1">
+          <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
             Choose how you sign contracts and fund transactions on Arc Network.
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          <button
-            onClick={handleManualRefreshBalances}
-            disabled={isRefreshing}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-gray-300 hover:text-white bg-white/5 hover:bg-white/10 rounded-lg border border-white/5 transition-all"
-          >
-            <RefreshCw size={12} className={isRefreshing ? 'animate-spin' : ''} />
-            Refresh Balances
-          </button>
-        </div>
+        <button onClick={handleManualRefreshBalances} disabled={isRefreshing}
+          className="btn btn-secondary" style={{ fontSize: '0.75rem', padding: '0.4rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+          <RefreshCw size={12} className={isRefreshing ? 'animate-spin-slow' : ''} /> Refresh Balances
+        </button>
       </div>
 
       {/* Selector Tabs */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-        {/* Passkey Option */}
-        <button
-          onClick={() => setSignerType('circle')}
-          className={`flex flex-col items-start text-left p-4 rounded-2xl border transition-all ${
-            signerType === 'circle'
-              ? 'bg-blue-500/10 border-blue-500/40 shadow-lg shadow-blue-500/5'
-              : 'bg-white/5 border-white/5 hover:border-white/10 hover:bg-white/10'
-          }`}
-        >
-          <div className="flex items-center justify-between w-full mb-2">
-            <span className="p-2 bg-blue-500/20 text-blue-400 rounded-xl">
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem', marginBottom: '1.5rem' }}>
+        <button onClick={() => setSignerType('circle')} style={tabStyle(signerType === 'circle', '#3b82f6')}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: '0.5rem' }}>
+            <span style={{ padding: '0.5rem', background: 'rgba(59,130,246,0.15)', color: '#60a5fa', borderRadius: '12px', display: 'flex' }}>
               <Fingerprint size={20} />
             </span>
-            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400">
-              Gasless UX
-            </span>
+            <span className="badge badge-success" style={{ fontSize: '0.6rem' }}>Gasless UX</span>
           </div>
-          <h3 className="font-bold text-white text-sm">Passkey (Circle)</h3>
-          <p className="text-xs text-gray-400 mt-1">
+          <strong style={{ fontSize: '0.85rem' }}>Passkey (Circle)</strong>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
             Biometric credentials. Sponsor gas automatically via Circle Paymaster.
-          </p>
+          </span>
         </button>
 
-        {/* Browser Wallet Option */}
-        <button
-          onClick={() => setSignerType('web3')}
-          className={`flex flex-col items-start text-left p-4 rounded-2xl border transition-all ${
-            signerType === 'web3'
-              ? 'bg-purple-500/10 border-purple-500/40 shadow-lg shadow-purple-500/5'
-              : 'bg-white/5 border-white/5 hover:border-white/10 hover:bg-white/10'
-          }`}
-        >
-          <div className="flex items-center justify-between w-full mb-2">
-            <span className="p-2 bg-purple-500/20 text-purple-400 rounded-xl">
+        <button onClick={() => setSignerType('web3')} style={tabStyle(signerType === 'web3', '#a855f7')}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: '0.5rem' }}>
+            <span style={{ padding: '0.5rem', background: 'rgba(168,85,247,0.15)', color: '#c084fc', borderRadius: '12px', display: 'flex' }}>
               <Wallet size={20} />
             </span>
-            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 border border-blue-500/10">
-              Web3 Client
-            </span>
+            <span className="badge badge-primary" style={{ fontSize: '0.6rem' }}>Web3 Client</span>
           </div>
-          <h3 className="font-bold text-white text-sm">MetaMask / Web3 Wallet</h3>
-          <p className="text-xs text-gray-400 mt-1">
+          <strong style={{ fontSize: '0.85rem' }}>MetaMask / Web3 Wallet</strong>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
             Standard provider connection using RainbowKit or browser extension.
-          </p>
+          </span>
         </button>
 
-        {/* Sandbox Keypair Option */}
-        <button
-          onClick={() => setSignerType('sandbox')}
-          className={`flex flex-col items-start text-left p-4 rounded-2xl border transition-all ${
-            signerType === 'sandbox'
-              ? 'bg-amber-500/10 border-amber-500/40 shadow-lg shadow-amber-500/5'
-              : 'bg-white/5 border-white/5 hover:border-white/10 hover:bg-white/10'
-          }`}
-        >
-          <div className="flex items-center justify-between w-full mb-2">
-            <span className="p-2 bg-amber-500/20 text-amber-400 rounded-xl">
+        <button onClick={() => setSignerType('sandbox')} style={tabStyle(signerType === 'sandbox', '#f59e0b')}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', marginBottom: '0.5rem' }}>
+            <span style={{ padding: '0.5rem', background: 'rgba(245,158,11,0.15)', color: '#fbbf24', borderRadius: '12px', display: 'flex' }}>
               <Key size={20} />
             </span>
-            <span className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 rounded bg-white/5 text-gray-300">
-              Developer Keys
-            </span>
+            <span className="badge badge-muted" style={{ fontSize: '0.6rem' }}>Developer Keys</span>
           </div>
-          <h3 className="font-bold text-white text-sm">Sandbox Wallet</h3>
-          <p className="text-xs text-gray-400 mt-1">
+          <strong style={{ fontSize: '0.85rem' }}>Sandbox Wallet</strong>
+          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', marginTop: '0.25rem' }}>
             Local keypair generated inside browser storage. Ideal for fast local tests.
-          </p>
+          </span>
         </button>
       </div>
 
-      {/* Active Selection Details Pane */}
-      <div className={`bg-white/5 border rounded-2xl p-5 pb-6 transition-all ${
-        signerType === 'circle' 
-          ? 'border-blue-500/20' 
-          : signerType === 'web3' 
-            ? 'border-purple-500/20' 
-            : 'border-amber-500/20'
-      }`}>
-        {/* Passkey Panel */}
+      {/* Details Pane */}
+      <div style={{ background: 'rgba(255,255,255,0.02)', border: `1px solid ${detailBorderColor}`, borderRadius: '16px', padding: '1.25rem', transition: 'border-color 0.3s' }}>
+
+        {/* === PASSKEY PANEL === */}
         {signerType === 'circle' && (
-          <div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {circleSession ? (
-              <div className="space-y-4">
-                <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-2 bg-white/5 p-4 rounded-xl border border-white/5">
+              <>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.75rem', background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
                   <div>
-                    <div className="flex items-center gap-2">
-                      <Fingerprint size={16} className="text-blue-400" />
-                      <span className="text-sm font-bold text-white">Active Passkey User:</span>
-                      <span className="px-2 py-0.5 rounded bg-blue-500/20 text-blue-400 text-xs font-mono">
-                        {circleSession.username}
-                      </span>
-                      {circleSession.isMock && (
-                        <span className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-400 text-[10px] uppercase font-bold">
-                          Simulated WebAuthn
-                        </span>
-                      )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                      <Fingerprint size={16} style={{ color: '#60a5fa' }} />
+                      <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>Active Passkey User:</span>
+                      <span className="badge badge-primary" style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem' }}>{circleSession.username}</span>
+                      {circleSession.isMock && <span className="badge badge-warning" style={{ fontSize: '0.6rem' }}>Simulated WebAuthn</span>}
                     </div>
-                    <div className="flex items-center gap-1.5 mt-2 font-mono text-xs text-gray-400">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem', fontFamily: 'var(--font-mono)', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
                       <span>{circleSession.address}</span>
-                      <button 
-                        onClick={() => copyToClipboard(circleSession.address)}
-                        className="hover:text-white transition-colors"
-                      >
-                        {copiedAddress ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                      <button onClick={() => copyToClipboard(circleSession.address)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>
+                        {copiedAddress ? <Check size={12} style={{ color: 'var(--success)' }} /> : <Copy size={12} />}
                       </button>
-                      <a
-                        href={`https://testnet.arcscan.app/address/${circleSession.address}`}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="hover:text-white transition-colors flex items-center gap-0.5"
-                      >
+                      <a href={`https://testnet.arcscan.app/address/${circleSession.address}`} target="_blank" rel="noreferrer" style={{ color: 'var(--text-muted)' }}>
                         <ExternalLink size={11} />
                       </a>
                     </div>
                   </div>
-                  <div>
-                    <button
-                      onClick={handleDisconnectCircle}
-                      className="flex items-center gap-1 px-3 py-1.5 text-xs font-semibold text-red-400 hover:text-red-300 bg-red-500/10 hover:bg-red-500/20 rounded-lg transition-colors border border-red-500/10"
-                    >
-                      <LogOut size={12} />
-                      Disconnect
-                    </button>
-                  </div>
+                  <button onClick={handleDisconnectCircle} className="btn" style={{ fontSize: '0.75rem', padding: '0.35rem 0.75rem', color: 'var(--danger)', borderColor: 'rgba(248,113,113,0.2)', background: 'rgba(248,113,113,0.08)' }}>
+                    <LogOut size={12} /> Disconnect
+                  </button>
                 </div>
 
-                {/* Balances list */}
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="bg-white/5 p-3.5 rounded-xl border border-white/5 text-center">
-                    <span className="text-xs text-gray-400 block mb-1">Native Gas (USDC)</span>
-                    <span className="text-base font-bold text-white">{circleBalances.nativeGas} USDC</span>
-                  </div>
-                  <div className="bg-white/5 p-3.5 rounded-xl border border-white/5 text-center">
-                    <span className="text-xs text-gray-400 block mb-1">USDC ERC-20</span>
-                    <span className="text-base font-bold text-white">{circleBalances.usdcToken} USDC</span>
-                  </div>
-                  <div className="bg-white/5 p-3.5 rounded-xl border border-white/5 text-center">
-                    <span className="text-xs text-gray-400 block mb-1">EURC ERC-20</span>
-                    <span className="text-base font-bold text-white">{circleBalances.eurcToken} EURC</span>
-                  </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+                  <div style={balanceCard}><span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.25rem' }}>Native Gas (USDC)</span><strong>{circleBalances.nativeGas} USDC</strong></div>
+                  <div style={balanceCard}><span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.25rem' }}>USDC ERC-20</span><strong>{circleBalances.usdcToken} USDC</strong></div>
+                  <div style={balanceCard}><span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.25rem' }}>EURC ERC-20</span><strong>{circleBalances.eurcToken} EURC</strong></div>
                 </div>
 
-                <div className="flex items-start gap-2 text-xs text-blue-400 bg-blue-500/10 p-3.5 rounded-xl border border-blue-500/20 mt-2">
-                  <Info size={14} className="shrink-0 mt-0.5" />
-                  <div>
-                    <span className="font-semibold">Circle Gas Station is Active:</span> All trade operations, escrows, and milestone triggers are fully sponsored. No transaction gas fee will be billed to your account.
-                  </div>
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', fontSize: '0.75rem', color: '#60a5fa', background: 'rgba(59,130,246,0.08)', padding: '0.875rem', borderRadius: '12px', border: '1px solid rgba(59,130,246,0.15)' }}>
+                  <Info size={14} style={{ flexShrink: 0, marginTop: '0.15rem' }} />
+                  <span><strong>Circle Gas Station is Active:</strong> All trade operations are fully sponsored. No gas fee billed to your account.</span>
                 </div>
-              </div>
+              </>
             ) : (
-              <div className="space-y-4">
-                <div className="bg-blue-500/10 border border-blue-500/20 p-4 rounded-xl">
-                  <h4 className="text-sm font-bold text-blue-400 flex items-center gap-1.5 mb-1">
-                    <Fingerprint size={16} />
-                    Create Gasless Smart Account
+              <>
+                <div style={{ background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.15)', padding: '1rem', borderRadius: '12px' }}>
+                  <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: '#60a5fa', display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.35rem' }}>
+                    <Fingerprint size={16} /> Create Gasless Smart Account
                   </h4>
-                  <p className="text-xs text-gray-300 leading-relaxed">
-                    By registering a Passkey, FreightX creates an ERC-4337 Smart Contract Wallet linked to your device biometrics (FaceID/TouchID). Transactions are sponsored gas-free via the Circle Paymaster!
+                  <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                    By registering a Passkey, FreightX creates an ERC-4337 Smart Contract Wallet linked to your device biometrics. Transactions are sponsored gas-free via Circle Paymaster!
                   </p>
                 </div>
-
-                <form onSubmit={handleRegisterCircle} className="flex flex-col sm:flex-row gap-2">
-                  <input
-                    type="text"
-                    placeholder="Enter Username (e.g. BuyerAlpha)"
-                    value={usernameInput}
-                    onChange={(e) => setUsernameInput(e.target.value)}
-                    disabled={loading}
-                    className="flex-1 px-4 py-2.5 bg-black/40 border border-white/10 rounded-xl text-sm text-white placeholder-gray-500 focus:outline-none focus:border-blue-500/50"
-                  />
-                  <button
-                    type="submit"
-                    disabled={loading || !usernameInput.trim()}
-                    className="flex items-center justify-center gap-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-500 disabled:bg-blue-600/50 disabled:cursor-not-allowed text-white font-semibold rounded-xl text-sm transition-colors border border-blue-500/30"
-                  >
-                    <UserPlus size={16} />
-                    {loading ? 'Creating...' : 'Register Passkey'}
+                <form onSubmit={handleRegisterCircle} style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <input type="text" placeholder="Enter Username (e.g. BuyerAlpha)" value={usernameInput} onChange={(e) => setUsernameInput(e.target.value)} disabled={loading}
+                    style={{ flex: 1, minWidth: '200px', padding: '0.65rem 1rem', background: 'rgba(0,0,0,0.3)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '12px', fontSize: '0.85rem', color: '#fff', outline: 'none' }} />
+                  <button type="submit" disabled={loading || !usernameInput.trim()} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', padding: '0.65rem 1rem', fontSize: '0.85rem' }}>
+                    <UserPlus size={16} /> {loading ? 'Creating...' : 'Register Passkey'}
                   </button>
                 </form>
-
-                <div className="flex items-center gap-2 justify-center py-2 text-xs text-gray-400">
-                  <span className="h-px bg-white/10 flex-1" />
-                  <span>OR</span>
-                  <span className="h-px bg-white/10 flex-1" />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.25rem 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  <span style={{ height: '1px', background: 'var(--border-color)', flex: 1 }} />OR<span style={{ height: '1px', background: 'var(--border-color)', flex: 1 }} />
                 </div>
-
-                <button
-                  type="button"
-                  onClick={handleLoginCircle}
-                  disabled={loading}
-                  className="w-full flex items-center justify-center gap-1.5 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-white font-semibold rounded-xl text-sm transition-colors border border-white/10"
-                >
-                  <LogIn size={16} className="text-blue-400" />
-                  Login with Existing Passkey
+                <button type="button" onClick={handleLoginCircle} disabled={loading} className="btn btn-secondary" style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', padding: '0.65rem 1rem', fontSize: '0.85rem' }}>
+                  <LogIn size={16} style={{ color: '#60a5fa' }} /> Login with Existing Passkey
                 </button>
-              </div>
+              </>
             )}
           </div>
         )}
 
-        {/* Browser Wallet Panel */}
+        {/* === WEB3 PANEL === */}
         {signerType === 'web3' && (
-          <div className="space-y-4">
-            <div className="bg-purple-500/10 border border-purple-500/20 p-4 rounded-xl">
-              <h4 className="text-sm font-bold text-purple-400 flex items-center gap-1.5 mb-1">
-                <Wallet size={16} />
-                RainbowKit Connection
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ background: 'rgba(168,85,247,0.08)', border: '1px solid rgba(168,85,247,0.15)', padding: '1rem', borderRadius: '12px' }}>
+              <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: '#c084fc', display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.35rem' }}>
+                <Wallet size={16} /> RainbowKit Connection
               </h4>
-              <p className="text-xs text-gray-300 leading-relaxed">
-                Connect your browser wallet (MetaMask, Coinbase Wallet, etc.) directly. In this mode, transactions are sent from your Web3 address, requiring you to pay gas in USDC on Arc Testnet.
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                Connect your browser wallet (MetaMask, Coinbase Wallet, etc.) directly. Transactions require you to pay gas in USDC on Arc Testnet.
               </p>
             </div>
-
-            <div className="flex justify-center p-4 bg-black/20 rounded-xl border border-white/5">
+            <div style={{ display: 'flex', justifyContent: 'center', padding: '1rem', background: 'rgba(0,0,0,0.15)', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
               <ConnectButton />
             </div>
-
-            <div className="grid grid-cols-3 gap-4 mt-4">
-              <div className="bg-white/5 p-3.5 rounded-xl border border-white/5 text-center">
-                <span className="text-xs text-gray-400 block mb-1">Native Gas (USDC)</span>
-                <span className="text-base font-bold text-white">{web3Balances.nativeGas} USDC</span>
-              </div>
-              <div className="bg-white/5 p-3.5 rounded-xl border border-white/5 text-center">
-                <span className="text-xs text-gray-400 block mb-1">USDC ERC-20</span>
-                <span className="text-base font-bold text-white">{web3Balances.usdcToken} USDC</span>
-              </div>
-              <div className="bg-white/5 p-3.5 rounded-xl border border-white/5 text-center">
-                <span className="text-xs text-gray-400 block mb-1">EURC ERC-20</span>
-                <span className="text-base font-bold text-white">{web3Balances.eurcToken} EURC</span>
-              </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+              <div style={balanceCard}><span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.25rem' }}>Native Gas (USDC)</span><strong>{web3Balances.nativeGas} USDC</strong></div>
+              <div style={balanceCard}><span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.25rem' }}>USDC ERC-20</span><strong>{web3Balances.usdcToken} USDC</strong></div>
+              <div style={balanceCard}><span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.25rem' }}>EURC ERC-20</span><strong>{web3Balances.eurcToken} EURC</strong></div>
             </div>
           </div>
         )}
 
-        {/* Sandbox Panel */}
+        {/* === SANDBOX PANEL === */}
         {signerType === 'sandbox' && wallet && (
-          <div className="space-y-4">
-            <div className="bg-amber-500/10 border border-amber-500/20 p-4 rounded-xl">
-              <h4 className="text-sm font-bold text-amber-400 flex items-center gap-1.5 mb-1">
-                <Key size={16} />
-                Sandbox Wallet Keys
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.15)', padding: '1rem', borderRadius: '12px' }}>
+              <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: '#fbbf24', display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.35rem' }}>
+                <Key size={16} /> Sandbox Wallet Keys
               </h4>
-              <p className="text-xs text-gray-300 leading-relaxed">
-                A sandbox account created automatically inside your browser storage. You can copy the address below to fund it via the faucet for quick experiments.
+              <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                A sandbox account created automatically inside your browser storage. Copy the address below to fund it via the faucet for quick experiments.
               </p>
             </div>
 
-            <div className="bg-white/5 p-4 rounded-xl border border-white/5 space-y-3">
-              <div>
-                <span className="text-[10px] text-gray-400 uppercase tracking-wider block font-bold mb-1">Address</span>
-                <div className="flex items-center justify-between bg-black/30 p-2.5 rounded-lg border border-white/5 font-mono text-xs text-white">
-                  <span>{wallet.address}</span>
-                  <button 
-                    onClick={() => copyToClipboard(wallet.address)}
-                    className="hover:text-white text-gray-400 transition-colors"
-                  >
-                    {copiedAddress ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+            <div style={{ background: 'rgba(255,255,255,0.03)', padding: '1rem', borderRadius: '12px', border: '1px solid rgba(255,255,255,0.05)' }}>
+              <div style={{ marginBottom: '0.75rem' }}>
+                <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700, display: 'block', marginBottom: '0.35rem' }}>Address</span>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(0,0,0,0.25)', padding: '0.65rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', fontFamily: 'var(--font-mono)', fontSize: '0.75rem' }}>
+                  <span style={{ wordBreak: 'break-all' }}>{wallet.address}</span>
+                  <button onClick={() => copyToClipboard(wallet.address)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', marginLeft: '0.5rem', flexShrink: 0 }}>
+                    {copiedAddress ? <Check size={12} style={{ color: 'var(--success)' }} /> : <Copy size={12} />}
                   </button>
                 </div>
               </div>
-
               <div>
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-[10px] text-gray-400 uppercase tracking-wider block font-bold">Private Key (Secret)</span>
-                  <button 
-                    onClick={() => setShowPrivateKey(!showPrivateKey)}
-                    className="text-[10px] text-amber-400 hover:text-amber-300 font-semibold"
-                  >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.35rem' }}>
+                  <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>Private Key (Secret)</span>
+                  <button onClick={() => setShowPrivateKey(!showPrivateKey)} style={{ background: 'none', border: 'none', fontSize: '0.65rem', color: '#fbbf24', cursor: 'pointer', fontWeight: 600 }}>
                     {showPrivateKey ? 'Hide Key' : 'Reveal Key'}
                   </button>
                 </div>
-                <div className="flex items-center justify-between bg-black/30 p-2.5 rounded-lg border border-white/5 font-mono text-xs text-white">
-                  <span className="truncate flex-1 max-w-[85%]">
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(0,0,0,0.25)', padding: '0.65rem', borderRadius: '8px', border: '1px solid rgba(255,255,255,0.05)', fontFamily: 'var(--font-mono)', fontSize: '0.75rem' }}>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, maxWidth: '85%' }}>
                     {showPrivateKey ? wallet.privateKey : '••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••••'}
                   </span>
-                  <button 
-                    onClick={() => copyToClipboard(wallet.privateKey)}
-                    className="hover:text-white text-gray-400 transition-colors ml-2"
-                  >
+                  <button onClick={() => copyToClipboard(wallet.privateKey)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', marginLeft: '0.5rem', flexShrink: 0 }}>
                     <Copy size={12} />
                   </button>
                 </div>
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
-              <div className="bg-white/5 p-3.5 rounded-xl border border-white/5 text-center">
-                <span className="text-xs text-gray-400 block mb-1">Native Gas (USDC)</span>
-                <span className="text-base font-bold text-white">{sandboxBalances.nativeGas} USDC</span>
-              </div>
-              <div className="bg-white/5 p-3.5 rounded-xl border border-white/5 text-center">
-                <span className="text-xs text-gray-400 block mb-1">USDC ERC-20</span>
-                <span className="text-base font-bold text-white">{sandboxBalances.usdcToken} USDC</span>
-              </div>
-              <div className="bg-white/5 p-3.5 rounded-xl border border-white/5 text-center">
-                <span className="text-xs text-gray-400 block mb-1">EURC ERC-20</span>
-                <span className="text-base font-bold text-white">{sandboxBalances.eurcToken} EURC</span>
-              </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+              <div style={balanceCard}><span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.25rem' }}>Native Gas (USDC)</span><strong>{sandboxBalances.nativeGas} USDC</strong></div>
+              <div style={balanceCard}><span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.25rem' }}>USDC ERC-20</span><strong>{sandboxBalances.usdcToken} USDC</strong></div>
+              <div style={balanceCard}><span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.25rem' }}>EURC ERC-20</span><strong>{sandboxBalances.eurcToken} EURC</strong></div>
             </div>
 
-            <div className="flex gap-2">
-              <button
-                onClick={handleRegenerateSandbox}
-                className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 bg-amber-500/10 hover:bg-amber-500/20 text-amber-400 hover:text-amber-300 font-semibold rounded-xl text-xs transition-colors border border-amber-500/20"
-              >
-                <RefreshCw size={12} />
-                Regenerate Local Keypair
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <button onClick={handleRegenerateSandbox} className="btn" style={{ flex: 1, fontSize: '0.75rem', padding: '0.65rem', color: '#fbbf24', borderColor: 'rgba(245,158,11,0.2)', background: 'rgba(245,158,11,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }}>
+                <RefreshCw size={12} /> Regenerate Local Keypair
               </button>
-              <a
-                href="https://faucet.circle.com"
-                target="_blank"
-                rel="noreferrer"
-                className="flex-1 flex items-center justify-center gap-1.5 px-4 py-2.5 bg-white/5 hover:bg-white/10 text-white font-semibold rounded-xl text-xs transition-colors border border-white/10"
-              >
-                Circle Faucet
-                <ExternalLink size={12} />
+              <a href="https://faucet.circle.com" target="_blank" rel="noreferrer" className="btn btn-secondary" style={{ flex: 1, fontSize: '0.75rem', padding: '0.65rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem', textDecoration: 'none' }}>
+                Circle Faucet <ExternalLink size={12} />
               </a>
             </div>
           </div>
