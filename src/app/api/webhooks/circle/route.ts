@@ -1,21 +1,46 @@
 import { NextResponse } from 'next/server';
 import { supabase } from '@/lib/db';
 import { logAudit } from '@/lib/auth';
+import { verifyCircleWebhookSignature } from '@/lib/circle-webhook-validator';
 
 // POST: Circle Webhook Event Ingestion Handler
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
+    const rawBody = await req.text();
+    const headers = req.headers;
+
+    // Cryptographically verify the signature
+    const verification = await verifyCircleWebhookSignature(rawBody, headers);
     
-    // Log the received Circle webhook in the database audit logs
-    const eventId = body?.id || 'unknown-evt';
-    const eventType = body?.type || 'circle.unknown';
-    const eventDetails = body?.data || {};
+    if (!verification.isValid) {
+      console.warn(`Circle Webhook signature validation failed: ${verification.reason}`);
+      // Hard block on unauthorized payloads in production
+      if (process.env.NODE_ENV === 'production') {
+        return NextResponse.json(
+          { error: 'Unauthorized', reason: verification.reason },
+          { status: 401 }
+        );
+      }
+    }
+
+    const body = JSON.parse(rawBody);
+
+    // Auto-confirm AWS SNS subscriptions if received
+    if (body.Type === 'SubscriptionConfirmation') {
+      const subscribeUrl = body.SubscribeURL;
+      if (subscribeUrl) {
+        console.log(`SNS Subscription Confirmation URL received: ${subscribeUrl}`);
+        await fetch(subscribeUrl);
+      }
+    }
+
+    const eventId = body?.id || body?.MessageId || 'unknown-evt';
+    const eventType = body?.type || body?.Type || 'circle.unknown';
+    const eventDetails = typeof body?.data === 'object' ? body.data : body;
 
     console.log(`Received Circle Webhook: ${eventType} (${eventId})`);
 
-    // In a production app, verify Circle signature header here.
-    // ForAgora stablecoins challenge, we ingest and audit the event.
+    // Log event in audit table
     await logAudit('0xCircleWebhook', eventType, {
       eventId,
       details: eventDetails
@@ -25,7 +50,6 @@ export async function POST(req: Request) {
     if (eventType === 'wallet.created') {
       const walletAddress = eventDetails.wallet?.address;
       if (walletAddress) {
-        // Log wallet mapping
         await supabase.from('users').upsert({
           wallet_address: walletAddress,
           wallet_type: 'circle',
@@ -38,7 +62,6 @@ export async function POST(req: Request) {
       const destinationAddress = eventDetails.destinationAddress;
       const amount = eventDetails.amount;
       
-      // If payment represents an escrow or loan transaction, perform updates if needed
       console.log(`Circle Transaction Updated: ${txHash} -> ${state} for ${destinationAddress} of amount ${amount}`);
     }
 
