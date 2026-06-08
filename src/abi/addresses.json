@@ -1,6 +1,10 @@
 {
-  "FreightPassport": "0xa106b3548e8d7bed77d984c1d6f9d60798bb87b0",
-  "FreightEscrow": "0xe6a4be867a1e798508a744ff115a95890afbbd45",
+  "FreightPassport": "0x414c07483092e9111b82870eece22f7fda689e00",
+  "FreightEscrow": "0xa62d82d5c5b63525dc19b570b5a666e01d1cae1d",
+  "FreightOracle": "0xc5cdd922f3bc30018f1cec3ddbfc324286f866bb",
+  "FreightAgent": "0x9ee7234ef354d4c350f7e48350e25bd57826af27",
+  "FreightDocuments": "0x886f808c75e92475ad66db69418a99844db41e1a",
+  "DisputeArbitration": "0xb06da182b5aab2d8f2e3ab3b9a63fc500d12c8da",
   "USDC": "0x3600000000000000000000000000000000000000",
   "chainName": "Arc Testnet",
   "chainId": 5042002,
