@@ -57,7 +57,7 @@ export async function getStableFXQuote(
   amount: string
 ): Promise<FXQuote> {
   const apiKey = process.env.STABLEFX_API_KEY;
-  const isMock = !apiKey || apiKey === 'YOUR_STABLEFX_API_KEY' || apiKey === '';
+  const isMock = !apiKey || apiKey === 'YOUR_STABLEFX_API_KEY' || apiKey === '' || apiKey.startsWith('TEST_API_KEY') || apiKey.startsWith('mock_') || apiKey.includes('your-');
 
   const fromCurr = fromCurrency.toUpperCase();
   const toCurr = toCurrency.toUpperCase();
@@ -139,7 +139,7 @@ export async function executeStableFXSwap(
   userAddress: Address
 ): Promise<FXTrade> {
   const apiKey = process.env.STABLEFX_API_KEY;
-  const isMock = !apiKey || apiKey === 'YOUR_STABLEFX_API_KEY' || apiKey === '';
+  const isMock = !apiKey || apiKey === 'YOUR_STABLEFX_API_KEY' || apiKey === '' || apiKey.startsWith('TEST_API_KEY') || apiKey.startsWith('mock_') || apiKey.includes('your-');
 
   if (!isMock) {
     try {
