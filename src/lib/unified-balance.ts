@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { AppKit } from '@circle-fin/app-kit';
 import { ViemAdapter } from '@circle-fin/adapter-viem-v2';
-import { createPublicClient, createWalletClient, http } from 'viem';
+import { createPublicClient, createWalletClient, http, formatUnits } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { sepolia, arbitrumSepolia } from 'viem/chains';
 import { type WalletInfo } from '@/lib/types';
@@ -129,14 +129,35 @@ export async function fetchUnifiedBalances(address: string) {
       breakdown,
     };
   } catch (err) {
-    console.error('[Unified Balance] fetchUnifiedBalances error:', err);
-    return {
-      success: false,
-      totalConfirmed: 0,
-      totalPending: 0,
-      breakdown: [],
-      error: err instanceof Error ? err.message : String(err),
-    };
+    console.warn('[Unified Balance] fetchUnifiedBalances error, falling back to direct RPC query:', err);
+    try {
+      const arcPublicClient = createPublicClient({
+        chain: getViemChain('Arc_Testnet'),
+        transport: http(chainRpcUrls['Arc_Testnet']),
+      });
+      const nativeBal = await arcPublicClient.getBalance({ address: address as `0x${string}` });
+      const arcUsdc = parseFloat(formatUnits(nativeBal, 18));
+      
+      return {
+        success: true,
+        totalConfirmed: arcUsdc,
+        totalPending: 0,
+        breakdown: [
+          { chain: 'Arc_Testnet', confirmed: arcUsdc, pending: 0 },
+          { chain: 'Ethereum_Sepolia', confirmed: 0, pending: 0 },
+          { chain: 'Arbitrum_Sepolia', confirmed: 0, pending: 0 },
+        ],
+      };
+    } catch (fallbackErr) {
+      console.error('[Unified Balance] Fallback RPC query also failed:', fallbackErr);
+      return {
+        success: false,
+        totalConfirmed: 0,
+        totalPending: 0,
+        breakdown: [],
+        error: err instanceof Error ? err.message : String(err),
+      };
+    }
   }
 }
 
