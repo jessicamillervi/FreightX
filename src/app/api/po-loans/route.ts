@@ -14,7 +14,8 @@ export async function GET(req: Request) {
     if (supplier) query = query.eq('supplier', supplier);
     if (buyer) query = query.eq('buyer', buyer);
 
-    query = query.order('id', { ascending: false });
+    // Sort by created_at descending to show most recent first
+    query = query.order('created_at', { ascending: false }).order('id', { ascending: false });
 
     const { data, error } = await query;
     if (error) {

@@ -16,8 +16,8 @@ export async function GET(req: Request) {
     if (supplier) query = query.eq('supplier', supplier);
     if (carrier) query = query.eq('carrier', carrier);
 
-    // Sort by id descending
-    query = query.order('id', { ascending: false });
+    // Sort by created_at descending to show most recent first
+    query = query.order('created_at', { ascending: false }).order('id', { ascending: false });
 
     const { data, error } = await query;
     if (error) {
@@ -35,8 +35,49 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   try {
     const userAddress = await getAuthUser(req);
-    // Even if no user session header is found, allow creation for simulation/sandbox convenience
     const creator = userAddress || '0xSystemGuest';
+
+    const VALID_SHIPMENT_COLUMNS = new Set([
+      'id',
+      'buyer',
+      'supplier',
+      'carrier',
+      'cargo_value',
+      'shipping_fee',
+      'released_supplier_amount',
+      'released_carrier_amount',
+      'departure_port',
+      'destination_port',
+      'status',
+      'arrived_timestamp',
+      'custom_clearance_timestamp',
+      'pickup_timestamp',
+      'free_time_hours',
+      'demurrage_rate_per_hour',
+      'demurrage_penalty_paid',
+      'passport_token_id',
+      'temperature',
+      'location',
+      'history',
+      'on_chain',
+      'tx_hash',
+      'created_timestamp',
+      'yield_earned',
+      'temperature_violations',
+      'temperature_penalty',
+      'beneficiary',
+      'factoring_price',
+      'factoring_active',
+      'token',
+      'po_id',
+      'has_po_loan',
+      'iot_gateway',
+      'humidity',
+      'usyc_wrapped',
+      'usyc_shares',
+      'cctp_source_domain',
+      'cctp_source_tx_hash'
+    ]);
 
     const body = await req.json();
     if (!body) {
@@ -44,7 +85,17 @@ export async function POST(req: Request) {
     }
 
     if (Array.isArray(body)) {
-      const rows = body.map(item => toSnakeCase(item) as Record<string, unknown>);
+      const rows = body.map(item => {
+        const rawRow = toSnakeCase(item) as Record<string, unknown>;
+        const clean: Record<string, unknown> = {};
+        for (const k of Object.keys(rawRow)) {
+          if (VALID_SHIPMENT_COLUMNS.has(k)) {
+            clean[k] = rawRow[k];
+          }
+        }
+        return clean;
+      });
+
       const { data, error } = await supabase.from('shipments').upsert(rows).select();
       if (error) {
         return NextResponse.json({ error: error.message }, { status: 500 });
@@ -57,37 +108,24 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing shipment ID' }, { status: 400 });
     }
 
-    const dbRow = toSnakeCase(body) as Record<string, unknown>;
-    const attemptRow = { ...dbRow };
-
-    let { data, error } = await supabase.from('shipments').insert(attemptRow).select().single();
-
-    if (error && error.message?.includes('column') && error.message?.includes('does not exist')) {
-      delete attemptRow.locked_fx_rate;
-      const secondAttempt = await supabase.from('shipments').insert(attemptRow).select().single();
-      data = secondAttempt.data;
-      error = secondAttempt.error;
+    const rawRow = toSnakeCase(body) as Record<string, unknown>;
+    const attemptRow: Record<string, unknown> = {};
+    for (const k of Object.keys(rawRow)) {
+      if (VALID_SHIPMENT_COLUMNS.has(k)) {
+        attemptRow[k] = rawRow[k];
+      }
     }
+
+    const { data, error } = await supabase.from('shipments').insert(attemptRow).select().single();
 
     if (error) {
       // If shipment already exists, update/upsert instead
-      let { data: upsertData, error: upsertErr } = await supabase
+      const { data: upsertData, error: upsertErr } = await supabase
         .from('shipments')
         .upsert(attemptRow)
         .select()
         .single();
         
-      if (upsertErr && upsertErr.message?.includes('column') && upsertErr.message?.includes('does not exist')) {
-        delete attemptRow.locked_fx_rate;
-        const secondUpsert = await supabase
-          .from('shipments')
-          .upsert(attemptRow)
-          .select()
-          .single();
-        upsertData = secondUpsert.data;
-        upsertErr = secondUpsert.error;
-      }
-
       if (upsertErr) {
         return NextResponse.json({ error: upsertErr.message }, { status: 500 });
       }

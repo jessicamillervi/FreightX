@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export function middleware(request: NextRequest) {
+// Next.js 16: renamed from `middleware` to `proxy`
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Only gate specific telemetry endpoints
@@ -17,7 +18,7 @@ export function middleware(request: NextRequest) {
       const price = isReading ? 0.001 : 0.01;
       const amountAtomic = Math.round(price * 1_000_000).toString();
       
-      const SELLER_ADDRESS = process.env.GATEWAY_SELLER_ADDRESS || '0x9b1C51cEF8bc8757ad757845ef80A390a3b9d194';
+      const SELLER_ADDRESS = process.env.GATEWAY_SELLER_ADDRESS || '0x9b1C51CEF8BC8757Ad757845eF80a390A3b9D194';
       const USDC_ASSET = '0x3600000000000000000000000000000000000000';
       const ARC_NETWORK = 'eip155:5042002';
 
