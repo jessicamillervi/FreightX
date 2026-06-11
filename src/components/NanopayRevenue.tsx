@@ -28,8 +28,8 @@ export default function NanopayRevenue({ shipmentId }: { shipmentId: number | nu
   const [simResult, setSimResult] = useState<any>(null);
   const [simType, setSimType] = useState<'reading' | 'history' | null>(null);
 
-  const buyerAddress = wallet?.address || '0x9b1C51cEF8bc8757ad757845ef80A390a3b9d194';
-  const sellerAddress = process.env.NEXT_PUBLIC_GATEWAY_SELLER_ADDRESS || '0x9b1C51cEF8bc8757ad757845ef80A390a3b9d194';
+  const buyerAddress = wallet?.address || '0x9b1C51CEF8BC8757Ad757845eF80a390A3b9D194';
+  const sellerAddress = process.env.NEXT_PUBLIC_GATEWAY_SELLER_ADDRESS || '0x9b1C51CEF8BC8757Ad757845eF80a390A3b9D194';
 
   // Fetch buyer deposit balance
   const fetchBalance = async () => {
@@ -232,93 +232,178 @@ export default function NanopayRevenue({ shipmentId }: { shipmentId: number | nu
   const historyQueryCount = payments.filter(p => p.endpoint === '/api/telemetry/history').length;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', marginTop: '1rem' }}>
+    <div className="space-y-8">
       
       {/* SECTION 1: USER PRE-PAID DEPOSITS */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '1rem' }}>
-        <div style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '1rem' }}>
-          <h4 style={{ fontSize: '0.85rem', marginBottom: '0.5rem', color: 'var(--primary)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <Coins size={15} /> Fund Buyer Gateway Balance
-          </h4>
-          <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '0.75rem' }}>
-            Fund your testnet wallet balance to pay for telemetry queries. Funds are held in a smart escrow and deducted per query.
-          </p>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="md:col-span-2 sub-card" style={{
+          background: 'var(--bg-elevated)',
+          borderRadius: 'var(--radius-lg)',
+          border: '1px solid var(--border)',
+          padding: '24px',
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: 'space-between',
+          boxShadow: 'var(--shadow-sm)'
+        }}>
+          <div>
+            <h4 style={{ fontSize: '15px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)', marginBottom: '6px' }}>
+              <Coins size={18} style={{ color: 'var(--secondary)' }} /> Fund Gateway Access Balance
+            </h4>
+            <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: '1.5', marginBottom: '20px' }}>
+              Pre-fund your local sandbox or Arc testnet wallet. Telemetry queries will automatically authenticate via EIP-3009 and deduct micro-fees per request.
+            </p>
+          </div>
 
-          <div style={{ display: 'flex', gap: '0.5rem' }}>
-            <div style={{ position: 'relative', flex: 1 }}>
+          <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+            <div style={{ flex: 1, position: 'relative' }}>
+              <span style={{ position: 'absolute', left: '14px', top: '50%', transform: 'translateY(-50%)', fontSize: '13px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>$</span>
               <input 
                 type="number"
                 step="0.1"
                 min="0.1"
-                className="form-control"
-                style={{ fontSize: '0.8rem', padding: '0.4rem 0.5rem 0.4rem 1.8rem', background: '#04060a', border: '1px solid var(--border-color)', color: 'var(--text-main)', borderRadius: '6px', width: '100%' }}
+                className="form-input"
+                style={{ paddingLeft: '28px', fontFamily: 'var(--font-mono)', fontSize: '13px', fontWeight: 600 }}
                 value={depositAmount}
                 onChange={(e) => setDepositAmount(e.target.value)}
                 placeholder="0.00"
               />
-              <span style={{ position: 'absolute', left: '0.6rem', top: '50%', transform: 'translateY(-50%)', fontSize: '0.8rem', color: 'var(--text-muted)' }}>$</span>
             </div>
             <button
               disabled={loading}
               onClick={handleDeposit}
               className="btn btn-primary"
-              style={{ fontSize: '0.8rem', padding: '0.4rem 1rem' }}
+              style={{ padding: '0 24px', display: 'flex', alignItems: 'center', gap: '8px' }}
             >
               Deposit USDC
             </button>
           </div>
         </div>
 
-        <div style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '1rem', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-          <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Pre-paid Buyer Balance</span>
-          <strong style={{ fontSize: '1.6rem', color: 'var(--success)', margin: '0.25rem 0' }}>
-            ${buyerBalance.toFixed(4)} <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>USDC</span>
-          </strong>
-          <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <Clock size={10} /> Live balance on Arc Testnet
-          </span>
+        <div className="sub-card flex flex-col justify-between" style={{
+          background: 'linear-gradient(135deg, #0B0F19 0%, #111827 100%)',
+          color: '#FFFFFF',
+          border: '1px solid rgba(255,255,255,0.08)',
+          position: 'relative',
+          overflow: 'hidden',
+          borderRadius: 'var(--radius-lg)',
+          padding: '24px',
+          boxShadow: 'var(--shadow-lg)'
+        }}>
+          {/* Glowing accent circle */}
+          <div style={{
+            position: 'absolute',
+            top: '-20px',
+            right: '-20px',
+            width: '80px',
+            height: '80px',
+            borderRadius: '50%',
+            background: 'var(--success)',
+            filter: 'blur(40px)',
+            opacity: 0.15
+          }} />
+          
+          <div>
+            <span style={{ fontSize: '10px', color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>Pre-paid Buyer Balance</span>
+            <h3 style={{ fontSize: '26px', fontWeight: 800, color: '#10B981', marginTop: '6px', fontFamily: 'var(--font-mono)', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+              ${buyerBalance.toFixed(4)} <span style={{ fontSize: '12px', color: '#9CA3AF', fontWeight: 'normal' }}>USDC</span>
+            </h3>
+          </div>
+          
+          <div style={{ borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '12px', marginTop: '16px', display: 'flex', alignItems: 'center', gap: '8px', fontSize: '10px', color: '#9CA3AF' }}>
+            <Clock size={12} className="text-emerald-500" />
+            <span>Live balance on Arc Testnet</span>
+          </div>
         </div>
       </div>
 
       {/* SECTION 2: SIMULATED PREMIUM QUERIES */}
-      <div style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '1rem' }}>
-        <h4 style={{ fontSize: '0.85rem', marginBottom: '0.75rem', color: 'var(--secondary)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-          <Play size={15} /> Gated Telemetry Query Simulator
-        </h4>
-        <p style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginBottom: '1rem' }}>
-          Test the paywall protocol. Querying telemetry returns actual sensor database logs only if EIP-3009 payment or pre-paid balance is verified.
+      <div className="sub-card" style={{
+        background: 'var(--bg-elevated)',
+        borderRadius: 'var(--radius-lg)',
+        border: '1px solid var(--border)',
+        padding: '24px',
+        boxShadow: 'var(--shadow-sm)'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+          <h4 style={{ fontSize: '15px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
+            <Play size={18} style={{ color: 'var(--accent)' }} /> Gated Telemetry Query Simulator
+          </h4>
+          <span className="badge badge-primary" style={{ textTransform: 'uppercase', fontSize: '10px' }}>HTTP 402 Paywall</span>
+        </div>
+        <p style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: '1.5', marginBottom: '20px' }}>
+          Test the cryptographic EIP-3009 payment requirements. External auditing and telemetry requests are blocked by default and only released upon micro-payment signature verification.
         </p>
 
-        <div style={{ display: 'flex', gap: '0.75rem', marginBottom: '1rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '12px', marginBottom: '20px' }}>
           <button
             disabled={loading || shipmentId === null}
             onClick={() => handleQuerySimulation('reading')}
             className="btn btn-secondary"
-            style={{ flex: 1, fontSize: '0.75rem', padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              height: '42px',
+              fontSize: '12px',
+              fontWeight: 600,
+              transition: 'all 0.2s ease',
+              borderColor: 'var(--border)'
+            }}
           >
-            <ShieldCheck size={14} /> Query Single Reading ($0.001)
+            <span style={{ fontSize: '9px', background: 'var(--success-soft)', color: 'var(--success)', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>GET</span>
+            Query Single Reading ($0.001)
           </button>
           <button
             disabled={loading || shipmentId === null}
             onClick={() => handleQuerySimulation('history')}
             className="btn btn-secondary"
-            style={{ flex: 1, fontSize: '0.75rem', padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px',
+              height: '42px',
+              fontSize: '12px',
+              fontWeight: 600,
+              transition: 'all 0.2s ease',
+              borderColor: 'var(--border)'
+            }}
           >
-            <History size={14} /> Query Shipment History ($0.01)
+            <span style={{ fontSize: '9px', background: 'var(--secondary-soft)', color: 'var(--secondary)', padding: '2px 6px', borderRadius: '4px', fontWeight: 700 }}>GET</span>
+            Query Shipment History ($0.01)
           </button>
         </div>
 
         {simResult && (
-          <div style={{ background: '#04060a', borderRadius: '8px', border: '1px solid var(--border-color)', padding: '0.75rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-              <span style={{ fontSize: '0.7rem', color: simResult.success ? 'var(--success)' : 'var(--danger)', fontWeight: 'bold' }}>
-                ● Response: {simResult.success ? '200 OK (Paid Access Granted)' : '402 Payment Required'}
+          <div style={{
+            background: '#0B0F19',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: 'var(--radius-md)',
+            padding: '16px',
+            boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.5)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px', paddingBottom: '8px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+              <span style={{ fontSize: '11px', fontWeight: 700, color: simResult.success ? '#10B981' : '#EF4444', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ display: 'inline-block', width: '6px', height: '6px', borderRadius: '50%', background: simResult.success ? '#10B981' : '#EF4444' }} />
+                Response: {simResult.success ? '200 OK (Paid Access)' : '402 Payment Required'}
               </span>
-              <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>
-                Endpoint: {simType === 'reading' ? '/reading' : '/history'}
+              <span style={{ fontSize: '10px', color: '#9CA3AF', fontFamily: 'var(--font-mono)' }}>
+                Endpoint: {simType === 'reading' ? '/telemetry/reading' : '/telemetry/history'}
               </span>
             </div>
-            <pre style={{ margin: 0, fontSize: '0.65rem', overflowX: 'auto', background: 'rgba(0,0,0,0.3)', padding: '0.5rem', borderRadius: '4px', border: '1px solid rgba(255,255,255,0.02)', color: '#00e676', fontFamily: 'var(--font-mono)' }}>
+            <pre className="custom-scrollbar" style={{
+              margin: 0,
+              fontSize: '11px',
+              overflowX: 'auto',
+              background: 'transparent',
+              padding: 0,
+              color: '#34D399',
+              fontFamily: 'var(--font-mono)',
+              maxHeight: '180px',
+              lineHeight: '1.5'
+            }}>
               {JSON.stringify(simResult, null, 2)}
             </pre>
           </div>
@@ -326,72 +411,98 @@ export default function NanopayRevenue({ shipmentId }: { shipmentId: number | nu
       </div>
 
       {/* SECTION 3: REVENUE ANALYTICS PANEL */}
-      <div style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '1rem' }}>
-        <h4 style={{ fontSize: '0.85rem', marginBottom: '0.75rem', color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-          <TrendingUp size={15} /> Seller Revenue Analytics Dashboard
+      <div className="sub-card" style={{
+        background: 'var(--bg-elevated)',
+        borderRadius: 'var(--radius-lg)',
+        border: '1px solid var(--border)',
+        padding: '24px',
+        boxShadow: 'var(--shadow-sm)'
+      }}>
+        <h4 style={{ fontSize: '15px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)', marginBottom: '20px' }}>
+          <TrendingUp size={18} style={{ color: 'var(--success)' }} /> Seller Revenue Analytics Dashboard
         </h4>
 
-        {/* Stats Cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
-          <div style={{ background: '#04060a', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.6rem', textAlign: 'center' }}>
-            <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>Total Earnings</span>
-            <div style={{ fontSize: '1rem', fontWeight: 'bold', color: 'var(--success)' }}>
-              ${totalRevenue.toFixed(4)} USDC
+        {/* Stats grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginBottom: '24px' }}>
+          <div style={{
+            background: 'var(--bg-main)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-md)',
+            padding: '16px',
+            textAlign: 'center'
+          }}>
+            <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>Total Earnings</span>
+            <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--success)', marginTop: '4px', fontFamily: 'var(--font-mono)' }}>
+              ${totalRevenue.toFixed(4)} <span style={{ fontSize: '11px', fontWeight: 'normal', color: 'var(--text-muted)' }}>USDC</span>
             </div>
           </div>
-          <div style={{ background: '#04060a', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.6rem', textAlign: 'center' }}>
-            <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>Reading Queries</span>
-            <div style={{ fontSize: '1rem', fontWeight: 'bold', color: 'var(--text-main)' }}>
-              {singleReadingCount} <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>(${ (singleReadingCount * 0.001).toFixed(3) })</span>
+          
+          <div style={{
+            background: 'var(--bg-main)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-md)',
+            padding: '16px',
+            textAlign: 'center'
+          }}>
+            <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>Reading Queries</span>
+            <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', marginTop: '4px', fontFamily: 'var(--font-mono)' }}>
+              {singleReadingCount} <span style={{ fontSize: '11px', fontWeight: 'normal', color: 'var(--text-muted)' }}>(${ (singleReadingCount * 0.001).toFixed(3) })</span>
             </div>
           </div>
-          <div style={{ background: '#04060a', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.6rem', textAlign: 'center' }}>
-            <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>History Queries</span>
-            <div style={{ fontSize: '1rem', fontWeight: 'bold', color: 'var(--text-main)' }}>
-              {historyQueryCount} <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>(${ (historyQueryCount * 0.01).toFixed(2) })</span>
+          
+          <div style={{
+            background: 'var(--bg-main)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-md)',
+            padding: '16px',
+            textAlign: 'center'
+          }}>
+            <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block' }}>History Queries</span>
+            <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', marginTop: '4px', fontFamily: 'var(--font-mono)' }}>
+              {historyQueryCount} <span style={{ fontSize: '11px', fontWeight: 'normal', color: 'var(--text-muted)' }}>(${ (historyQueryCount * 0.01).toFixed(2) })</span>
             </div>
           </div>
         </div>
 
-        {/* Query Ledger Log */}
+        {/* Ledger list */}
         <div>
-          <h5 style={{ fontSize: '0.75rem', marginBottom: '0.5rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <Database size={12} /> x402 Nanopayment Settlement Ledger
+          <h5 style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <Database size={14} style={{ color: 'var(--text-secondary)' }} /> x402 Nanopayment Settlement Ledger
           </h5>
-          <div style={{ maxHeight: '150px', overflowY: 'auto', border: '1px solid var(--border-color)', borderRadius: '8px' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.65rem', textAlign: 'left' }}>
+          <div className="custom-table-container" style={{ maxHeight: '200px', overflowY: 'auto' }}>
+            <table className="custom-table">
               <thead>
-                <tr style={{ background: '#04060a', borderBottom: '1px solid var(--border-color)', color: 'var(--text-secondary)' }}>
-                  <th style={{ padding: '0.4rem' }}>Timestamp</th>
-                  <th style={{ padding: '0.4rem' }}>Buyer</th>
-                  <th style={{ padding: '0.4rem' }}>Endpoint</th>
-                  <th style={{ padding: '0.4rem' }}>Shipment</th>
-                  <th style={{ padding: '0.4rem', textAlign: 'right' }}>Paid</th>
+                <tr>
+                  <th style={{ padding: '8px 12px', fontSize: '10px' }}>Timestamp</th>
+                  <th style={{ padding: '8px 12px', fontSize: '10px' }}>Buyer</th>
+                  <th style={{ padding: '8px 12px', fontSize: '10px' }}>Endpoint</th>
+                  <th style={{ padding: '8px 12px', fontSize: '10px', textAlign: 'center' }}>Shipment</th>
+                  <th style={{ padding: '8px 12px', fontSize: '10px', textAlign: 'right' }}>Paid</th>
                 </tr>
               </thead>
               <tbody>
                 {payments.length === 0 ? (
                   <tr>
-                    <td colSpan={5} style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                    <td colSpan={5} style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '12px' }}>
                       No payment settlements recorded yet.
                     </td>
                   </tr>
                 ) : (
                   payments.map((p, idx) => (
-                    <tr key={p.id || idx} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)', verticalAlign: 'middle' }}>
-                      <td style={{ padding: '0.4rem', color: 'var(--text-muted)' }}>
+                    <tr key={p.id || idx}>
+                      <td style={{ padding: '10px 12px', fontSize: '12px', fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>
                         {new Date(p.createdAt || Date.now()).toLocaleTimeString()}
                       </td>
-                      <td style={{ padding: '0.4rem', fontFamily: 'var(--font-mono)' }}>
+                      <td style={{ padding: '10px 12px', fontSize: '12px', fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>
                         {p.buyerAddress ? `${p.buyerAddress.slice(0, 6)}...${p.buyerAddress.slice(-4)}` : 'Unknown'}
                       </td>
-                      <td style={{ padding: '0.4rem', color: '#00b0ff' }}>
-                        {p.endpoint}
+                      <td style={{ padding: '10px 12px', fontSize: '12px' }}>
+                        <code style={{ fontSize: '11px', background: p.endpoint.includes('reading') ? 'var(--success-soft)' : 'var(--secondary-soft)', color: p.endpoint.includes('reading') ? 'var(--success)' : 'var(--secondary)', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>{p.endpoint.replace('/api', '')}</code>
                       </td>
-                      <td style={{ padding: '0.4rem', textAlign: 'center' }}>
+                      <td style={{ padding: '10px 12px', fontSize: '12px', textAlign: 'center', color: 'var(--text-secondary)' }}>
                         #{p.shipmentId || 'N/A'}
                       </td>
-                      <td style={{ padding: '0.4rem', textAlign: 'right', color: 'var(--success)', fontWeight: 'bold' }}>
+                      <td style={{ padding: '10px 12px', fontSize: '12px', textAlign: 'right', color: 'var(--success)', fontWeight: 700 }}>
                         +${parseFloat(p.amount).toFixed(4)}
                       </td>
                     </tr>
@@ -401,7 +512,6 @@ export default function NanopayRevenue({ shipmentId }: { shipmentId: number | nu
             </table>
           </div>
         </div>
-
       </div>
 
     </div>

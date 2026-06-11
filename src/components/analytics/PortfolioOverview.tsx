@@ -20,8 +20,8 @@ export const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({ data }) =>
       title: 'Total Escrow Value Secured',
       value: formatUSDC(data.totalEscrowValue),
       sub: 'Active logistics escrow collateral',
-      icon: <Landmark className="w-5 h-5 text-teal-400" />,
-      glowColor: 'bg-teal-500/10',
+      icon: <Landmark className="w-5 h-5 text-teal-600" />,
+      glowColor: 'bg-teal-500/5',
       borderColor: 'border-teal-500/20',
       percentChange: '+14.2% MoM'
     },
@@ -29,8 +29,8 @@ export const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({ data }) =>
       title: 'Active Cargo Shipments',
       value: data.activeShipments.toString(),
       sub: 'Containers currently in transit',
-      icon: <Activity className="w-5 h-5 text-sky-400" />,
-      glowColor: 'bg-sky-500/10',
+      icon: <Activity className="w-5 h-5 text-sky-600" />,
+      glowColor: 'bg-sky-500/5',
       borderColor: 'border-sky-500/20',
       percentChange: 'Live telematics tracking'
     },
@@ -38,8 +38,8 @@ export const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({ data }) =>
       title: 'Realized Yield Earned',
       value: formatUSDC(data.yieldEarned),
       sub: 'USYC wrapped liquidity yield',
-      icon: <Coins className="w-5 h-5 text-emerald-400" />,
-      glowColor: 'bg-emerald-500/10',
+      icon: <Coins className="w-5 h-5 text-emerald-600" />,
+      glowColor: 'bg-emerald-500/5',
       borderColor: 'border-emerald-500/20',
       percentChange: '5.25% average APY'
     },
@@ -47,8 +47,8 @@ export const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({ data }) =>
       title: 'Platform System Revenue',
       value: formatUSDC(data.revenue),
       sub: 'Flat PO fees & dispute penalties',
-      icon: <TrendingUp className="w-5 h-5 text-amber-400" />,
-      glowColor: 'bg-amber-500/10',
+      icon: <TrendingUp className="w-5 h-5 text-amber-600" />,
+      glowColor: 'bg-amber-500/5',
       borderColor: 'border-amber-500/20',
       percentChange: '+8.7% MoM'
     }
@@ -59,26 +59,26 @@ export const PortfolioOverview: React.FC<PortfolioOverviewProps> = ({ data }) =>
       {cards.map((card, index) => (
         <div
           key={index}
-          className={`bg-slate-900/60 backdrop-blur-md border ${card.borderColor} rounded-xl p-5 relative overflow-hidden shadow-lg transition-transform hover:-translate-y-0.5 duration-200`}
+          className={`glass-panel border ${card.borderColor} transition-transform hover:-translate-y-0.5 duration-200`}
         >
           {/* Subtle Background Glow */}
           <div className={`absolute top-0 right-0 w-24 h-24 rounded-full blur-2xl ${card.glowColor} -z-10`} />
 
           <div className="flex justify-between items-center mb-4">
-            <span className="text-slate-400 text-xs font-semibold uppercase tracking-wider">{card.title}</span>
-            <div className="p-2 bg-slate-950/60 rounded-lg border border-slate-800/80">
+            <span className="text-[var(--text-secondary)] text-xs font-semibold uppercase tracking-wider">{card.title}</span>
+            <div className="p-2 bg-[var(--bg-main)] rounded-lg border border-[var(--border)]">
               {card.icon}
             </div>
           </div>
 
           <div className="space-y-1">
-            <h3 className="text-xl sm:text-2xl font-bold text-white tracking-tight font-display">{card.value}</h3>
-            <p className="text-slate-400 text-[11px]">{card.sub}</p>
+            <h3 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] tracking-tight font-display">{card.value}</h3>
+            <p className="text-[var(--text-secondary)] text-[11px]">{card.sub}</p>
           </div>
 
-          <div className="mt-4 pt-3 border-t border-slate-850 flex justify-between items-center text-[10px]">
-            <span className="text-emerald-400 font-semibold">{card.percentChange}</span>
-            <span className="text-slate-500">Updated just now</span>
+          <div className="mt-4 pt-3 border-t border-[var(--border)] flex justify-between items-center text-[10px]">
+            <span className="text-emerald-600 font-semibold">{card.percentChange}</span>
+            <span className="text-[var(--text-muted)]">Updated just now</span>
           </div>
         </div>
       ))}

@@ -77,67 +77,171 @@ export default function AgentDashboard() {
   const settlementJobs = logs.filter((l: any) => l.action === 'Cargo Settled');
 
   return (
-    <div className="space-y-6">
-      {/* Hero Header */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-zinc-900 via-zinc-950 to-zinc-900 border border-zinc-800 p-6 shadow-2xl">
-        <div className="absolute top-0 right-0 h-40 w-40 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 h-40 w-40 bg-cyan-500/5 rounded-full blur-3xl pointer-events-none" />
+    <div className="space-y-6 text-[#F3F4F6]">
+      {/* Premium Dark Autopilot Dashboard Panel */}
+      <div 
+        style={{
+          background: 'linear-gradient(135deg, #0a0d16 0%, #111522 100%)',
+          border: '1px solid rgba(255, 255, 255, 0.06)',
+          borderRadius: '20px',
+          padding: '24px',
+          boxShadow: '0 12px 30px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.05)',
+          position: 'relative',
+          overflow: 'hidden'
+        }}
+      >
+        {/* Glow ambient spots */}
+        <div style={{
+          position: 'absolute',
+          top: '-15%',
+          right: '-15%',
+          width: '240px',
+          height: '240px',
+          background: 'radial-gradient(circle, rgba(99, 102, 241, 0.15) 0%, rgba(99, 102, 241, 0) 70%)',
+          pointerEvents: 'none'
+        }} />
+        <div style={{
+          position: 'absolute',
+          bottom: '-15%',
+          left: '-15%',
+          width: '240px',
+          height: '240px',
+          background: 'radial-gradient(circle, rgba(16, 185, 129, 0.08) 0%, rgba(16, 185, 129, 0) 70%)',
+          pointerEvents: 'none'
+        }} />
 
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl text-emerald-400 shadow-inner">
-              <Bot className="h-10 w-10 animate-pulse" />
+        {/* Top Header Block */}
+        <div style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '16px',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+          paddingBottom: '20px',
+          marginBottom: '20px'
+        }}>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div style={{
+                background: 'linear-gradient(135deg, #6366F1 0%, #3B82F6 100%)',
+                padding: '8px',
+                borderRadius: '10px',
+                boxShadow: '0 0 15px rgba(99, 102, 241, 0.4)'
+              }}>
+                <Bot size={22} className="text-white" />
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-white leading-tight flex items-center gap-2 m-0">
+                  AI Agent Logistics Coordinator
+                </h3>
+                <span className="text-3xs text-[#9CA3AF] uppercase tracking-wider font-bold">ERC-8004 & ERC-8183 On-Chain Autopilot</span>
+              </div>
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-xl font-bold text-white tracking-tight">{status?.name || 'Logistics Coordinator'}</h2>
-                <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                  {status?.status || 'Active'}
+
+            {/* Actions */}
+            <div className="flex items-center gap-3">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(31, 41, 55, 0.4)', padding: '5px 12px', borderRadius: '10px', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+                <span style={{ fontSize: '9px', color: '#9CA3AF', fontWeight: 700, textTransform: 'uppercase', tracking: '0.05em' }}>Status:</span>
+                <span style={{
+                  fontSize: '11px',
+                  fontWeight: 800,
+                  color: '#10B981',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px'
+                }}>
+                  <span style={{
+                    width: '7px',
+                    height: '7px',
+                    borderRadius: '50%',
+                    backgroundColor: '#10B981',
+                    boxShadow: '0 0 8px #10B981',
+                    display: 'inline-block'
+                  }} />
+                  {status?.status || 'ACTIVE'}
                 </span>
               </div>
-              <p className="text-xs text-zinc-400 mt-1 max-w-md">
-                Autonomous AI Coordinator managing logistics milestones, cold-chain temperature compliance, dispute logging, and settlements.
-              </p>
-            </div>
-          </div>
 
-          <div className="flex flex-wrap items-center gap-3">
-            <button
-              onClick={fetchStatus}
-              className="p-2.5 rounded-xl bg-zinc-900 border border-zinc-800 hover:bg-zinc-800 text-zinc-400 hover:text-white transition duration-200"
-              title="Refresh State"
-            >
-              <RefreshCw className="h-5 w-5" />
-            </button>
-            <button
-              onClick={handleManualTrigger}
-              disabled={executing}
-              className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-black font-semibold rounded-xl shadow-lg shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-            >
-              {executing ? (
-                <>
-                  <RefreshCw className="h-4 w-4 animate-spin text-black" />
-                  Running Loop...
-                </>
-              ) : (
-                <>
-                  <Play className="h-4 w-4 fill-black text-black" />
-                  Execute Loop
-                </>
-              )}
-            </button>
+              <button
+                onClick={fetchStatus}
+                style={{
+                  background: 'rgba(31, 41, 55, 0.4)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  color: '#D1D5DB',
+                  cursor: 'pointer',
+                  borderRadius: '10px',
+                  width: '36px',
+                  height: '36px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'all 0.2s'
+                }}
+                title="Refresh State"
+              >
+                <RefreshCw size={14} />
+              </button>
+
+              <button
+                onClick={handleManualTrigger}
+                disabled={executing}
+                style={{
+                  background: 'linear-gradient(90deg, #10B981 0%, #059669 100%)',
+                  border: 'none',
+                  color: '#FFFFFF',
+                  cursor: executing ? 'not-allowed' : 'pointer',
+                  borderRadius: '10px',
+                  padding: '0 16px',
+                  height: '36px',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  boxShadow: '0 4px 12px rgba(16, 185, 129, 0.25)',
+                  transition: 'all 0.2s'
+                }}
+              >
+                {executing ? (
+                  <>
+                    <RefreshCw size={13} className="animate-spin" />
+                    RUNNING...
+                  </>
+                ) : (
+                  <>
+                    <Play size={13} fill="#FFFFFF" />
+                    EXECUTE LOOP
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Identity & Reputation Stats */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6 pt-6 border-t border-zinc-800/60">
-          <div className="bg-zinc-900/40 border border-zinc-800/40 p-4 rounded-xl flex items-center justify-between">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          {/* Card 1: Agent Wallet */}
+          <div style={{
+            background: 'rgba(17, 24, 39, 0.4)',
+            border: '1px solid rgba(255, 255, 255, 0.06)',
+            borderRadius: '12px',
+            padding: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}>
             <div className="flex items-center gap-3">
-              <Cpu className="h-5 w-5 text-cyan-400" />
+              <div style={{
+                background: 'rgba(99, 102, 241, 0.1)',
+                padding: '8px',
+                borderRadius: '8px',
+                color: '#6366F1'
+              }}>
+                <Cpu size={18} />
+              </div>
               <div>
-                <span className="text-xs text-zinc-500 block">Agent Wallet Address</span>
-                <span className="text-sm font-mono text-zinc-300">
-                  {status?.walletAddress ? `${status.walletAddress.substring(0, 8)}...${status.walletAddress.substring(36)}` : 'Loading...'}
+                <span style={{ fontSize: '9px', color: '#9CA3AF', fontWeight: 700, textTransform: 'uppercase', display: 'block', letterSpacing: '0.05em', marginBottom: '2px' }}>Agent Wallet Address</span>
+                <span className="text-xs font-mono text-white font-bold">
+                  {status?.walletAddress ? `${status.walletAddress.substring(0, 8)}...${status.walletAddress.substring(34)}` : 'Loading...'}
                 </span>
               </div>
             </div>
@@ -146,156 +250,291 @@ export default function AgentDashboard() {
                 href={`https://testnet.arcscan.app/address/${status.walletAddress}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-zinc-500 hover:text-white transition"
+                style={{ color: '#9CA3AF' }}
+                className="hover:text-white transition-colors"
               >
-                <ExternalLink className="h-4 w-4" />
+                <ExternalLink className="h-3.5 w-3.5" />
               </a>
             )}
           </div>
 
-          <div className="bg-zinc-900/40 border border-zinc-800/40 p-4 rounded-xl flex items-center justify-between">
+          {/* Card 2: ERC-8004 */}
+          <div style={{
+            background: 'rgba(17, 24, 39, 0.4)',
+            border: '1px solid rgba(255, 255, 255, 0.06)',
+            borderRadius: '12px',
+            padding: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}>
             <div className="flex items-center gap-3">
-              <UserCheck className="h-5 w-5 text-emerald-400" />
+              <div style={{
+                background: 'rgba(16, 185, 129, 0.1)',
+                padding: '8px',
+                borderRadius: '8px',
+                color: '#10B981'
+              }}>
+                <UserCheck size={18} />
+              </div>
               <div>
-                <span className="text-xs text-zinc-500 block">ERC-8004 On-Chain Identity</span>
-                <span className="text-sm font-semibold text-zinc-300">
+                <span style={{ fontSize: '9px', color: '#9CA3AF', fontWeight: 700, textTransform: 'uppercase', display: 'block', letterSpacing: '0.05em', marginBottom: '2px' }}>ERC-8004 Identity</span>
+                <span className="text-xs text-white font-bold">
                   {status?.onChainRegistered ? `NFT Token ID: #${status.agentId}` : 'Not Registered'}
                 </span>
               </div>
             </div>
             {status?.onChainRegistered && (
-              <span className="px-2 py-0.5 text-3xs font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 rounded">
+              <span style={{
+                fontSize: '8px',
+                fontWeight: 900,
+                background: 'rgba(99, 102, 241, 0.15)',
+                color: '#6366F1',
+                padding: '2px 6px',
+                borderRadius: '4px',
+                border: '1px solid rgba(99, 102, 241, 0.3)'
+              }}>
                 VERIFIED
               </span>
             )}
           </div>
 
-          <div className="bg-zinc-900/40 border border-zinc-800/40 p-4 rounded-xl flex items-center justify-between">
+          {/* Card 3: Reputation */}
+          <div style={{
+            background: 'rgba(17, 24, 39, 0.4)',
+            border: '1px solid rgba(255, 255, 255, 0.06)',
+            borderRadius: '12px',
+            padding: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}>
             <div className="flex items-center gap-3">
-              <Award className="h-5 w-5 text-amber-400" />
+              <div style={{
+                background: 'rgba(245, 158, 11, 0.1)',
+                padding: '8px',
+                borderRadius: '8px',
+                color: '#F59E0B'
+              }}>
+                <Award size={18} />
+              </div>
               <div>
-                <span className="text-xs text-zinc-500 block">Reputation Score</span>
-                <span className="text-sm font-bold text-zinc-100">
+                <span style={{ fontSize: '9px', color: '#9CA3AF', fontWeight: 700, textTransform: 'uppercase', display: 'block', letterSpacing: '0.05em', marginBottom: '2px' }}>Reputation Score</span>
+                <span className="text-xs text-white font-bold">
                   {status?.reputation ?? 100} / 100
                 </span>
               </div>
             </div>
-            <div className="h-2 w-24 bg-zinc-800 rounded-full overflow-hidden">
+            <div className="h-2 w-16 bg-[#1F2937] rounded-full overflow-hidden border border-[rgba(255,255,255,0.06)] relative" style={{ minWidth: '64px' }}>
               <div 
-                className="h-full bg-amber-400 rounded-full" 
-                style={{ width: `${status?.reputation ?? 100}%` }}
+                className="h-full rounded-full transition-all duration-500" 
+                style={{ 
+                  width: `${status?.reputation ?? 100}%`,
+                  background: (status?.reputation ?? 100) >= 80 
+                    ? 'linear-gradient(90deg, #10B981 0%, #059669 100%)' 
+                    : 'linear-gradient(90deg, #F59E0B 0%, #D97706 100%)'
+                }}
               />
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Main Grid: Job Summary and Logs */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* ERC-8183 Job Registry */}
-        <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-5 shadow-lg space-y-4">
-          <div className="flex items-center gap-2 border-b border-zinc-800/80 pb-3">
-            <ShieldAlert className="h-5 w-5 text-zinc-400" />
-            <h3 className="text-base font-bold text-white">ERC-8183 Jobs Registry</h3>
+        {/* Main Grid: Job Summary and Logs */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* ERC-8183 Job Registry */}
+          <div style={{
+            background: 'rgba(17, 24, 39, 0.3)',
+            border: '1px solid rgba(255, 255, 255, 0.06)',
+            borderRadius: '16px',
+            padding: '20px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '16px'
+          }}>
+            <div className="flex items-center gap-2 border-b border-[rgba(255,255,255,0.08)] pb-3">
+              <ShieldAlert className="h-4 w-4 text-[#9CA3AF]" />
+              <h3 className="text-sm font-bold text-white m-0">ERC-8183 Jobs Registry</h3>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div 
+                className="border p-3.5 rounded-xl text-center transition duration-300"
+                style={{
+                  background: disputeJobs.length > 0 ? 'rgba(239, 68, 68, 0.08)' : 'rgba(31, 41, 55, 0.2)',
+                  borderColor: disputeJobs.length > 0 ? 'rgba(239, 68, 68, 0.25)' : 'rgba(255, 255, 255, 0.06)'
+                }}
+              >
+                <span className="text-2xl font-black block leading-none mb-1" style={{ color: disputeJobs.length > 0 ? '#EF4444' : '#9CA3AF' }}>
+                  {disputeJobs.length}
+                </span>
+                <span className="text-[8px] font-bold text-[#9CA3AF] uppercase tracking-wider block">Active Disputes</span>
+              </div>
+              <div 
+                className="border p-3.5 rounded-xl text-center transition duration-300"
+                style={{
+                  background: 'rgba(16, 185, 129, 0.06)',
+                  borderColor: 'rgba(16, 185, 129, 0.2)'
+                }}
+              >
+                <span className="text-2xl font-black block leading-none mb-1" style={{ color: '#10B981' }}>
+                  {settlementJobs.length}
+                </span>
+                <span className="text-[8px] font-bold text-[#9CA3AF] uppercase tracking-wider block">Settled Escrows</span>
+              </div>
+            </div>
+
+            <div className="space-y-2.5 pt-1">
+              <span className="text-[9px] font-bold text-[#9CA3AF] uppercase tracking-wider block">Pending Tasks</span>
+              {disputeJobs.length === 0 ? (
+                <div style={{
+                  border: '1px dashed rgba(255, 255, 255, 0.1)',
+                  background: 'rgba(31, 41, 55, 0.15)',
+                  borderRadius: '10px',
+                  padding: '20px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px'
+                }}>
+                  <CheckCircle2 className="h-5 w-5 text-[#10B981]" />
+                  <p className="text-[11px] text-[#9CA3AF] font-semibold m-0">No active cargo disputes</p>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                  {disputeJobs.map((job: any) => (
+                    <div key={job.id} style={{
+                      background: 'rgba(245, 158, 11, 0.05)',
+                      border: '1px solid rgba(245, 158, 11, 0.2)',
+                      borderRadius: '8px',
+                      padding: '10px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      borderLeft: '4px solid #F59E0B'
+                    }}>
+                      <div>
+                        <span className="text-xs font-bold text-[#F59E0B] block">Shipment #{job.shipmentId}</span>
+                        <p className="text-3xs text-[#9CA3AF] truncate max-w-[120px] m-0">{job.details}</p>
+                      </div>
+                      <span className="px-1.5 py-0.5 text-3xs font-extrabold bg-[rgba(245, 158, 11, 0.1)] text-[#F59E0B] rounded border border-rgba(245, 158, 11, 0.15)">
+                        Disputed
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="bg-zinc-900/50 border border-zinc-800/60 p-4 rounded-xl text-center">
-              <span className="text-2xl font-black text-amber-500 block">{disputeJobs.length}</span>
-              <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Active Disputes</span>
+          {/* Activity Logs Timeline */}
+          <div 
+            className="lg:col-span-2 shadow-sm flex flex-col min-h-[280px]"
+            style={{
+              background: 'rgba(17, 24, 39, 0.3)',
+              border: '1px solid rgba(255, 255, 255, 0.06)',
+              borderRadius: '16px',
+              padding: '20px',
+              gap: '16px'
+            }}
+          >
+            <div className="flex items-center justify-between border-b border-[rgba(255, 255, 255, 0.08)] pb-3">
+              <div className="flex items-center gap-2">
+                <Activity className="h-4 w-4 text-[#9CA3AF]" />
+                <h3 className="text-sm font-bold text-white m-0">Coordinator Operations Log</h3>
+              </div>
+              <span className="text-[9px] text-[#9CA3AF] font-bold uppercase tracking-wider">Real-time telemetry feeds</span>
             </div>
-            <div className="bg-zinc-900/50 border border-zinc-800/60 p-4 rounded-xl text-center">
-              <span className="text-2xl font-black text-emerald-400 block">{settlementJobs.length}</span>
-              <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Settled Escrows</span>
-            </div>
-          </div>
 
-          <div className="space-y-3 pt-2">
-            <h4 className="text-xs font-bold text-zinc-500 uppercase tracking-wide">Pending Tasks</h4>
-            {disputeJobs.length === 0 ? (
-              <div className="flex flex-col items-center justify-center p-6 bg-zinc-900/20 border border-zinc-800/40 rounded-xl">
-                <CheckCircle2 className="h-6 w-6 text-zinc-600 mb-2" />
-                <p className="text-xs text-zinc-500">No active cargo disputes detected.</p>
+            {logs.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center p-12 text-[#9CA3AF] gap-2">
+                <Activity className="h-6 w-6 text-[#4B5563] animate-pulse" />
+                <p className="text-xs m-0">No activity recorded yet.</p>
               </div>
             ) : (
-              <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                {disputeJobs.map((job: any) => (
-                  <div key={job.id} className="p-3 bg-amber-500/5 border border-amber-500/10 rounded-xl flex items-center justify-between">
-                    <div>
-                      <span className="text-xs font-bold text-amber-400">Shipment #{job.shipmentId}</span>
-                      <p className="text-3xs text-zinc-400 truncate max-w-xs">{job.details}</p>
+              <div 
+                style={{
+                  background: '#060912',
+                  border: '1px solid rgba(255, 255, 255, 0.06)',
+                  borderRadius: '10px',
+                  padding: '16px',
+                  maxHeight: '300px',
+                  overflowY: 'auto',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px',
+                  fontFamily: 'monospace'
+                }}
+                className="custom-scrollbar"
+              >
+                {logs.map((log: any) => {
+                  let statusColor = '#9CA3AF';
+                  let logTagBg = 'rgba(156, 163, 175, 0.08)';
+                  let logTagText = '#9CA3AF';
+                  if (log.status === 'success') {
+                    statusColor = '#10B981';
+                    logTagBg = 'rgba(16, 185, 129, 0.1)';
+                    logTagText = '#10B981';
+                  } else if (log.status === 'warning') {
+                    statusColor = '#F59E0B';
+                    logTagBg = 'rgba(245, 158, 11, 0.1)';
+                    logTagText = '#F59E0B';
+                  } else if (log.status === 'error') {
+                    statusColor = '#EF4444';
+                    logTagBg = 'rgba(239, 68, 68, 0.1)';
+                    logTagText = '#EF4444';
+                  }
+
+                  return (
+                    <div key={log.id} style={{
+                      borderBottom: '1px solid rgba(255, 255, 255, 0.04)',
+                      paddingBottom: '10px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '4px'
+                    }}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span style={{
+                            fontSize: '9px',
+                            fontWeight: 800,
+                            background: logTagBg,
+                            color: logTagText,
+                            padding: '1px 6px',
+                            borderRadius: '4px',
+                            border: `1px solid ${logTagText}20`
+                          }}>
+                            {log.action}
+                          </span>
+                          <span className="h-1.5 w-1.5 rounded-full block animate-pulse" style={{ background: statusColor, boxShadow: `0 0 6px ${statusColor}` }} />
+                        </div>
+                        <span style={{ fontSize: '10px', color: '#4B5563' }}>
+                          {new Date(log.timestamp).toLocaleTimeString()}
+                        </span>
+                      </div>
+                      
+                      <p className="text-xs text-[#D1D5DB] m-0" style={{ lineHeight: '1.4' }}>{log.details}</p>
+                      
+                      {log.txHash && log.txHash !== '0x0000000000000000000000000000000000000000000000000000000000000000' && (
+                        <div className="pt-0.5 flex items-center gap-1.5">
+                          <span className="text-3xs text-[#4B5563] font-mono">Tx:</span>
+                          <a 
+                            href={`https://testnet.arcscan.app/tx/${log.txHash}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-3xs text-[#6366F1] opacity-90 hover:opacity-100 font-mono hover:underline flex items-center gap-0.5 transition"
+                          >
+                            {log.txHash.substring(0, 16)}...
+                            <ExternalLink className="h-2.5 w-2.5" />
+                          </a>
+                        </div>
+                      )}
                     </div>
-                    <span className="px-2 py-0.5 text-3xs font-bold bg-amber-500/10 text-amber-400 rounded">
-                      Disputed
-                    </span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
-        </div>
-
-        {/* Activity Logs Timeline */}
-        <div className="lg:col-span-2 bg-zinc-950 border border-zinc-800 rounded-2xl p-5 shadow-lg flex flex-col space-y-4">
-          <div className="flex items-center justify-between border-b border-zinc-800/80 pb-3">
-            <div className="flex items-center gap-2">
-              <Activity className="h-5 w-5 text-zinc-400" />
-              <h3 className="text-base font-bold text-white">Coordinator Operations Log</h3>
-            </div>
-            <span className="text-2xs text-zinc-500 font-medium">Real-time telemetry feeds</span>
-          </div>
-
-          {logs.length === 0 ? (
-            <div className="flex-1 flex flex-col items-center justify-center p-12 text-zinc-500">
-              <Activity className="h-8 w-8 text-zinc-700 animate-pulse mb-3" />
-              <p className="text-sm">No activity recorded yet.</p>
-            </div>
-          ) : (
-            <div className="flex-1 space-y-4 max-h-[340px] overflow-y-auto pr-2">
-              {logs.map((log: any) => (
-                <div key={log.id} className="flex gap-4 p-3.5 bg-zinc-900/30 border border-zinc-800/60 rounded-xl hover:bg-zinc-900/60 transition">
-                  <div className="mt-0.5">
-                    {log.status === 'warning' && (
-                      <span className="h-2 w-2 rounded-full bg-amber-500 block shadow-glow-amber animate-pulse" />
-                    )}
-                    {log.status === 'success' && (
-                      <span className="h-2 w-2 rounded-full bg-emerald-500 block shadow-glow-emerald" />
-                    )}
-                    {log.status === 'error' && (
-                      <span className="h-2 w-2 rounded-full bg-rose-500 block animate-ping" />
-                    )}
-                    {(!log.status || log.status === 'info') && (
-                      <span className="h-2 w-2 rounded-full bg-zinc-500 block" />
-                    )}
-                  </div>
-
-                  <div className="flex-1 space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-white">{log.action}</span>
-                      <span className="text-3xs text-zinc-500 font-mono">
-                        {new Date(log.timestamp).toLocaleTimeString()}
-                      </span>
-                    </div>
-                    <p className="text-xs text-zinc-400">{log.details}</p>
-                    {log.txHash && log.txHash !== '0x0000000000000000000000000000000000000000000000000000000000000000' && (
-                      <div className="pt-1 flex items-center gap-1.5">
-                        <span className="text-3xs text-zinc-600 font-mono">Tx:</span>
-                        <a 
-                          href={`https://testnet.arcscan.app/tx/${log.txHash}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-3xs text-emerald-400/80 hover:text-emerald-400 font-mono hover:underline flex items-center gap-0.5 transition"
-                        >
-                          {log.txHash.substring(0, 16)}...
-                          <ExternalLink className="h-2.5 w-2.5" />
-                        </a>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
         </div>
       </div>
     </div>

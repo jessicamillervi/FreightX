@@ -10,7 +10,7 @@ import { payoutCrewOnchain, saveLocalShipments, EURC_ADDRESS } from '@/services/
 
 export default function PayrollTab() {
   const { appMode, showToast, logTerminal, updateBalances, contracts, setActiveTab } = useAppContext();
-  const { wallet, signerType, connectedAddress, browserWalletClient } = useWallet();
+  const { wallet, signerType, connectedAddress, browserWalletClient, circleSession } = useWallet();
   const { shipments, setShipments, selectedShipmentId, loading, setLoading, refreshShipmentsList } = useShipments();
 
   // Local Payroll States
@@ -22,22 +22,22 @@ export default function PayrollTab() {
 
   if (selectedShipmentId === null) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+        <div className="section-header">
           <div>
-            <h2 style={{ fontSize: '1.3rem' }}>Instant Payroll & Crew Split Pay</h2>
-            <p style={{ fontSize: '0.8rem' }}>Automates payout splits, routing funds instantly to harbor tolls, truck drivers, fuel merchants, and logistics staff upon delivery.</p>
+            <h2 className="section-title">Instant Payroll</h2>
+            <p className="section-subtitle">Split payouts to harbor tolls, drivers, fuel merchants, and logistics staff upon delivery.</p>
           </div>
         </div>
 
-        <div className="glass-panel" style={{ textAlign: 'center', padding: '3rem 0', border: '1px dashed var(--border-color)', borderRadius: '12px' }}>
-          <Coins size={36} style={{ color: 'var(--text-muted)', marginBottom: '0.75rem' }} />
-          <h3 style={{ fontSize: '1rem', marginBottom: '0.25rem' }}>No Escrow Selected</h3>
-          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
-            Please select a successfully settled shipment cargo escrow from the active registry to divide freight payouts.
+        <div style={{ textAlign: 'center', padding: '64px 0' }}>
+          <Coins size={28} style={{ color: 'var(--text-muted)', marginBottom: '12px' }} />
+          <h3 style={{ fontSize: '16px', marginBottom: '8px' }}>No Escrow Selected</h3>
+          <p style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '20px' }}>
+            Select a settled shipment escrow to configure payroll splits.
           </p>
           <button onClick={() => setActiveTab('escrows')} className="btn btn-secondary">
-            Go to Cargo Registry
+            Go to Escrow Shipments
           </button>
         </div>
       </div>
@@ -92,7 +92,9 @@ export default function PayrollTab() {
       // Live on chain
       if (!contracts) return;
       try {
-        const signer = (signerType === 'web3' && browserWalletClient ? browserWalletClient : wallet.privateKey) as string | WalletClient;
+        const signer = (signerType === 'web3' && browserWalletClient ? browserWalletClient :
+                        signerType === 'circle' && circleSession ? circleSession :
+                        wallet.privateKey) as any;
         const hash = await payoutCrewOnchain(
           signer,
           contracts,
@@ -111,6 +113,7 @@ export default function PayrollTab() {
         
         await updateBalances(wallet.address, 'sandbox');
         if (connectedAddress) await updateBalances(connectedAddress, 'web3');
+        if (circleSession?.address) await updateBalances(circleSession.address, 'circle');
         await refreshShipmentsList('live', contracts, wallet);
       } catch (err) {
         const errMsg = err instanceof Error ? err.message : String(err);
@@ -124,13 +127,13 @@ export default function PayrollTab() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+      <div className="section-header">
         <div>
-          <h2 style={{ fontSize: '1.3rem' }}>Instant Payroll & Crew Split Pay</h2>
-          <p style={{ fontSize: '0.8rem' }}>Automates payout splits, routing funds instantly to harbor tolls, truck drivers, fuel merchants, and logistics staff upon delivery.</p>
+          <h2 className="section-title">Instant Payroll</h2>
+          <p className="section-subtitle">Split payouts to drivers, harbor tolls, and subcontractors.</p>
         </div>
-        <span className="badge badge-primary">Active Cargo Escrow: #{selectedShipmentId}</span>
+        <span className="badge badge-primary">Escrow #{selectedShipmentId}</span>
       </div>
 
       <div className="grid-cols-2">

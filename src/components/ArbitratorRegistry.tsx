@@ -73,17 +73,17 @@ export const ArbitratorRegistry: React.FC<ArbitratorRegistryProps> = ({ currentA
   );
 
   return (
-    <div className="bg-slate-900/60 backdrop-blur-md border border-slate-800 rounded-xl p-6 shadow-xl relative overflow-hidden">
+    <div className="glass-panel">
       {/* Background radial highlight */}
-      <div className="absolute top-0 right-0 w-64 h-64 bg-teal-500/10 rounded-full blur-3xl -z-10 pointer-events-none" />
+      <div className="absolute top-0 right-0 w-64 h-64 bg-teal-500/5 rounded-full blur-3xl -z-10 pointer-events-none" />
       
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 pb-4 border-b border-slate-800">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 pb-4 border-b border-[var(--border)]">
         <div>
-          <h2 className="text-xl font-bold text-white flex items-center gap-2 font-display">
-            <span className="w-2.5 h-2.5 rounded-full bg-teal-500 animate-pulse" />
+          <h2 className="text-xl font-bold text-[var(--text-primary)] flex items-center gap-2 font-display">
+            <span className="w-2.5 h-2.5 rounded-full bg-teal-600 animate-pulse" />
             Arbitrator Governance Registry
           </h2>
-          <p className="text-slate-400 text-xs mt-1">
+          <p className="text-[var(--text-secondary)] text-xs mt-1">
             Stake USDC to resolve cargo escrows. Consensus alignment yields reputation points.
           </p>
         </div>
@@ -93,19 +93,19 @@ export const ArbitratorRegistry: React.FC<ArbitratorRegistryProps> = ({ currentA
             <button
               onClick={handleRegister}
               disabled={loading}
-              className="px-4 py-2 text-xs font-semibold text-white bg-teal-600 hover:bg-teal-500 disabled:opacity-50 rounded-lg shadow-md transition-all duration-200"
+              className="btn btn-primary bg-teal-600 hover:bg-teal-700 border-teal-600 text-white px-5"
             >
               {loading ? 'Processing...' : 'Register as Arbitrator (Stake 100 USDC)'}
             </button>
           ) : (
             <div className="flex items-center gap-2">
-              <span className="px-3 py-1 bg-teal-950/80 border border-teal-800 text-teal-400 rounded-lg text-xs font-medium">
+              <span className="px-3 py-1 bg-teal-50 border border-teal-200 text-teal-700 rounded-lg text-xs font-medium">
                 Registered (Reputation: {currentArbDetails?.reputation || 100})
               </span>
               <button
                 onClick={handleUnregister}
                 disabled={loading}
-                className="px-3 py-2 text-xs font-semibold text-red-400 hover:text-white bg-red-950/30 hover:bg-red-600/50 border border-red-900/50 disabled:opacity-50 rounded-lg transition-all duration-200"
+                className="btn btn-secondary border-red-200 text-red-650 hover:bg-red-50/50 px-4"
               >
                 Unregister & Refund
               </button>
@@ -117,49 +117,49 @@ export const ArbitratorRegistry: React.FC<ArbitratorRegistryProps> = ({ currentA
       {message && (
         <div className={`mb-6 p-4 rounded-lg text-xs border ${
           message.type === 'success' 
-            ? 'bg-emerald-950/30 border-emerald-800 text-emerald-400' 
-            : 'bg-red-950/30 border-red-800 text-red-400'
+            ? 'bg-emerald-50 border-emerald-200 text-emerald-700' 
+            : 'bg-red-50 border-red-200 text-red-700'
         }`}>
           {message.text}
         </div>
       )}
 
       <div>
-        <h3 className="text-sm font-semibold text-slate-300 mb-3">Active Arbitrators Pool</h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-300">
+        <h3 className="text-sm font-semibold text-[var(--text-secondary)] mb-3">Active Arbitrators Pool</h3>
+        <div className="custom-table-container">
+          <table className="custom-table">
             <thead>
-              <tr className="border-b border-slate-800 text-slate-400">
-                <th className="py-2.5 font-medium">Arbitrator Address</th>
-                <th className="py-2.5 font-medium text-right">Staked Amount</th>
-                <th className="py-2.5 font-medium text-right">Reputation Score</th>
-                <th className="py-2.5 font-medium text-center">Status</th>
+              <tr>
+                <th>Arbitrator Address</th>
+                <th className="text-right">Staked Amount</th>
+                <th className="text-right">Reputation Score</th>
+                <th className="text-center">Status</th>
               </tr>
             </thead>
             <tbody>
               {arbitrators.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="text-center py-6 text-slate-500">
+                  <td colSpan={4} className="text-center py-6 text-[var(--text-muted)] italic">
                     No registered arbitrators. Be the first to register!
                   </td>
                 </tr>
               ) : (
                 arbitrators.map((arb, index) => (
-                  <tr key={index} className="border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors">
-                    <td className="py-3 font-mono text-slate-400">{arb.address}</td>
-                    <td className="py-3 text-right font-semibold text-white">{arb.stakedAmount} USDC</td>
-                    <td className="py-3 text-right">
+                  <tr key={index} className="align-middle">
+                    <td className="font-mono text-[var(--text-secondary)]">{arb.address}</td>
+                    <td className="text-right font-semibold text-[var(--text-primary)]">{arb.stakedAmount} USDC</td>
+                    <td className="text-right">
                       <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
                         arb.reputation >= 120 
-                          ? 'bg-emerald-950 text-emerald-400 border border-emerald-900' 
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
                           : arb.reputation >= 80 
-                          ? 'bg-blue-950 text-blue-400 border border-blue-900' 
-                          : 'bg-amber-950 text-amber-400 border border-amber-900'
+                          ? 'bg-blue-50 text-blue-700 border border-blue-200' 
+                          : 'bg-amber-50 text-amber-700 border border-amber-200'
                       }`}>
                         {arb.reputation} / 200
                       </span>
                     </td>
-                    <td className="py-3 text-center">
+                    <td className="text-center">
                       <span className="w-2 h-2 inline-block rounded-full bg-emerald-500" />
                     </td>
                   </tr>

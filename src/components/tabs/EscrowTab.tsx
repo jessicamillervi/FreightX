@@ -14,6 +14,7 @@ import {
   requestPOFinancingOnchain, 
   fundPOLoanOnchain,
   saveLocalShipments,
+  queryBalances,
   USDC_ADDRESS,
   EURC_ADDRESS
 } from '@/services/sandbox';
@@ -21,7 +22,16 @@ import { type ShipmentData, type POLoanData } from '@/lib/types';
 
 export default function EscrowTab() {
   const { appMode, showToast, logTerminal, updateBalances, contracts, setActiveTab } = useAppContext();
-  const { wallet, signerType, connectedAddress, browserWalletClient } = useWallet();
+  const { 
+    wallet, 
+    signerType, 
+    connectedAddress, 
+    browserWalletClient, 
+    sandboxBalances,
+    web3Balances,
+    circleSession,
+    circleBalances
+  } = useWallet();
   const { shipments, setShipments, selectedShipmentId, setSelectedShipmentId, loading, setLoading, refreshShipmentsList } = useShipments();
   const { poLoans, setPoLoans, poProgress, setPoProgress, refreshPOLoansList } = usePOLoans();
 
@@ -29,10 +39,10 @@ export default function EscrowTab() {
   const [isCreatingShipment, setIsCreatingShipment] = useState(false);
   const [createProgress, setCreateProgress] = useState('');
   const [formData, setFormData] = useState({
-    supplier: '0x8d92F677cD6303Cec089B5F319D72aA797da53',
-    carrier: '0x1c902E11a58c4bb489b3ab1c51cef8bc8757845e',
-    cargoValue: '500',
-    shippingFee: '80',
+    supplier: '0x8D92F677cd6303cEc089B5F319D72Aa797Da5300',
+    carrier: '0x1C902e11A58c4BB489B3ab1c51CEf8BC8757845E',
+    cargoValue: '2.0',
+    shippingFee: '0.5',
     departurePort: 'Singapore Keppel Terminal',
     destinationPort: 'Rotterdam Gateway',
     freeTimeHours: '2', 
@@ -46,9 +56,9 @@ export default function EscrowTab() {
 
   // PO Request Form
   const [poRequestForm, setPoRequestForm] = useState({
-    buyer: '0x9b1C51cEF8bc8757ad757845ef80A390a3b9d194',
-    cargoValue: '1000',
-    loanAmount: '800',
+    buyer: '0x9b1C51CEF8BC8757Ad757845eF80a390A3b9D194',
+    cargoValue: '4.0',
+    loanAmount: '3.0',
     tokenType: 'USDC' as 'USDC' | 'EURC'
   });
 
@@ -86,6 +96,24 @@ export default function EscrowTab() {
     const interval = setInterval(fetchAedRates, 15000);
     return () => clearInterval(interval);
   }, []);
+
+  // Dynamically adjust Cargo Value and Shipping Fee when switching to Live Arc mode
+  // to ensure they fit within the faucet balance (5.0 USDC) for testing.
+  useEffect(() => {
+    if (appMode === 'live') {
+      setFormData(prev => ({
+        ...prev,
+        cargoValue: '2',
+        shippingFee: '0.5',
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        cargoValue: '500',
+        shippingFee: '80',
+      }));
+    }
+  }, [appMode]);
 
   const convertedUsdc = parseFloat(stableFxInputAed) * aedToUsdcRate;
   const convertedEurc = parseFloat(stableFxInputAed) * aedToEurcRate;
@@ -183,11 +211,65 @@ export default function EscrowTab() {
         return;
       }
 
+      // Auto-fund active wallet if it lacks gas or tokens
+      const activeUserAddress = signerType === 'web3' && connectedAddress ? connectedAddress : 
+                               signerType === 'circle' && circleSession?.address ? circleSession.address : 
+                               wallet?.address;
+
+      if (activeUserAddress) {
+        setCreateProgress('Checking wallet balances...');
+        let gasVal = 0;
+        let tokenVal = 0;
+        try {
+          const realTimeBal = await queryBalances(activeUserAddress as `0x${string}`);
+          gasVal = parseFloat(realTimeBal.nativeGas);
+          tokenVal = parseFloat(formData.tokenType === 'EURC' ? realTimeBal.eurcToken : realTimeBal.usdcToken);
+          logTerminal(`Real-time wallet balance: Gas = ${gasVal} USDC, Token = ${tokenVal} ${formData.tokenType}`);
+        } catch (balErr) {
+          console.error("Error querying real-time balance:", balErr);
+          const currentBalances = signerType === 'web3' ? web3Balances : 
+                                  signerType === 'circle' ? circleBalances : 
+                                  sandboxBalances;
+          gasVal = parseFloat(currentBalances?.nativeGas || '0');
+          tokenVal = parseFloat(formData.tokenType === 'EURC' ? currentBalances?.eurcToken || '0' : currentBalances?.usdcToken || '0');
+        }
+        
+        if (gasVal < 0.05 || tokenVal < (val + fee)) {
+          logTerminal(`[Auto-Funding] Low balance for ${activeUserAddress.slice(0, 10)}... (Gas: ${gasVal} USDC, Token: ${tokenVal} ${formData.tokenType}). Requesting faucet auto-boost...`);
+          setCreateProgress('Auto-funding wallet...');
+          
+          try {
+            const res = await fetch('/api/faucet', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ address: activeUserAddress })
+            });
+            const data = await res.json();
+            if (res.ok && !data.error) {
+              logTerminal(`[Auto-Funding Success] Gas Tx: ${data.gasTxHash.slice(0, 15)}... ERC20 Tx: ${data.erc20TxHash.slice(0, 15)}...`);
+              showToast('Auto-funded wallet with gas and tokens!', 'success');
+              // Wait 1.5 seconds for blockchain state propagation
+              await new Promise(r => setTimeout(r, 1500));
+              // Refresh balances
+              await updateBalances(activeUserAddress, signerType);
+            } else {
+              logTerminal(`[Auto-Funding Failed] ${data.error || 'Server faucet error'}`);
+              throw new Error(`Auto-funding failed: ${data.error || 'Server faucet error'}`);
+            }
+          } catch (faucetErr) {
+            console.error('Auto-funding error:', faucetErr);
+            throw faucetErr;
+          }
+        }
+      }
+
       const activeFxRate = formData.tokenType === 'EURC' ? aedToEurcRate : aedToUsdcRate;
 
       if (formData.cctpPending) {
         try {
-          const signer = (signerType === 'web3' && browserWalletClient ? browserWalletClient : wallet.privateKey) as string | WalletClient;
+          const signer = (signerType === 'web3' && browserWalletClient ? browserWalletClient :
+                          signerType === 'circle' && circleSession ? circleSession :
+                          wallet.privateKey) as any;
           const { shipmentId, txHash } = await createShipmentWithCCTPPendingOnchain(
             signer,
             contracts,
@@ -266,9 +348,84 @@ export default function EscrowTab() {
         } catch (err) {
           const errMsg = err instanceof Error ? err.message : String(err);
           logTerminal(`Onchain creation failed: ${errMsg}`);
-          showToast('Creation failed.', 'error');
-          setIsCreatingShipment(false);
-          setCreateProgress('');
+          
+          const isGasOrTokenErr = errMsg.includes('gas') || 
+                                  errMsg.includes('balance') || 
+                                  errMsg.includes('USDC') ||
+                                  errMsg.includes('transfer') ||
+                                  errMsg.includes('revert') ||
+                                  errMsg.includes('allowance') ||
+                                  errMsg.includes('funder') ||
+                                  errMsg.includes('Fund your address') ||
+                                  errMsg.includes('HTTP request failed') ||
+                                  errMsg.includes('Failed to fetch');
+
+          if (isGasOrTokenErr) {
+            logTerminal(`[Auto-Fallback] Local sandbox wallet is unfunded or testnet RPC is congested. Falling back to premium Simulated Mode...`);
+            
+            const newId = shipments.length > 0 ? Math.max(...shipments.map(s => s.id)) + 1 : 101;
+            const val = parseFloat(formData.cargoValue);
+            const fee = parseFloat(formData.shippingFee);
+            const rate = parseFloat(formData.demurrageRatePerHour);
+            const freeTime = parseInt(formData.freeTimeHours);
+            const tokenAddr = formData.tokenType === 'EURC' ? EURC_ADDRESS : USDC_ADDRESS;
+
+            const newShipment: ShipmentData = {
+              id: newId,
+              buyer: signerType === 'web3' && connectedAddress ? connectedAddress : wallet.address,
+              supplier: formData.supplier,
+              carrier: formData.carrier,
+              cargoValue: val,
+              shippingFee: fee,
+              releasedSupplierAmount: 0,
+              releasedCarrierAmount: 0,
+              departurePort: formData.departurePort,
+              destinationPort: formData.destinationPort,
+              status: 'Created',
+              arrivedTimestamp: 0,
+              customClearanceTimestamp: 0,
+              pickupTimestamp: 0,
+              freeTimeHours: freeTime,
+              demurrageRatePerHour: rate,
+              demurragePenaltyPaid: 0,
+              passportTokenId: newId * 100,
+              temperature: 4.2,
+              location: formData.departurePort,
+              history: [
+                { timestamp: Date.now(), status: 'Created', location: formData.departurePort, temperature: 4.2 }
+              ],
+              createdTimestamp: Date.now(),
+              yieldEarned: 0,
+              temperatureViolations: 0,
+              temperaturePenalty: 0,
+              beneficiary: formData.supplier,
+              factoringPrice: 0,
+              factoringActive: false,
+              token: tokenAddr,
+              lockedFxRate: activeFxRate,
+              cctpSourceDomain: 3
+            };
+
+            const updated = [newShipment, ...shipments];
+            setShipments(updated);
+            saveLocalShipments(updated);
+            setSelectedShipmentId(newId);
+
+            logTerminal(`[Simulated CCTP Shipment] Local cargo escrow created! ID: ${newId}. (CORS/Gas Fallback)`);
+            showToast(`CCTP onchain creation failed. Simulated shipment #${newId} created!`, 'warning');
+            
+            setIsCreatingShipment(false);
+            setCreateProgress('');
+            setFormData({
+              ...formData,
+              poId: '',
+              cctpPending: false
+            });
+          } else {
+            showToast('Creation failed.', 'error');
+            setIsCreatingShipment(false);
+            setCreateProgress('');
+          }
         } finally {
           setLoading(false);
         }
@@ -297,7 +454,9 @@ export default function EscrowTab() {
           await new Promise(r => setTimeout(r, 2000));
         }
 
-        const signer = (signerType === 'web3' && browserWalletClient ? browserWalletClient : wallet.privateKey) as string | WalletClient;
+        const signer = (signerType === 'web3' && browserWalletClient ? browserWalletClient :
+                        signerType === 'circle' && circleSession ? circleSession :
+                        wallet.privateKey) as any;
         const { shipmentId, txHash } = await createShipmentOnchain(
           signer,
           contracts,
@@ -376,11 +535,102 @@ export default function EscrowTab() {
           useUnifiedBalance: false
         });
       } catch (err) {
+        console.error("=== FREIGHTX ONCHAIN ESCROW CREATION ERROR ===");
+        console.error(err);
         const errMsg = err instanceof Error ? err.message : String(err);
         logTerminal(`Onchain creation failed: ${errMsg}`);
-        showToast('Token transfer or creation failed. Fund your address.', 'error');
-        setIsCreatingShipment(false);
-        setCreateProgress('');
+        
+        const isGasOrTokenErr = errMsg.includes('gas') || 
+                                errMsg.includes('balance') || 
+                                errMsg.includes('USDC') ||
+                                errMsg.includes('transfer') ||
+                                errMsg.includes('revert') ||
+                                errMsg.includes('allowance') ||
+                                errMsg.includes('funder') ||
+                                errMsg.includes('Fund your address') ||
+                                errMsg.includes('HTTP request failed') ||
+                                errMsg.includes('Failed to fetch');
+
+        if (isGasOrTokenErr) {
+          logTerminal(`[Auto-Fallback] Local sandbox wallet is unfunded or testnet RPC is congested. Falling back to premium Simulated Mode...`);
+          
+          const newId = shipments.length > 0 ? Math.max(...shipments.map(s => s.id)) + 1 : 101;
+          const val = parseFloat(formData.cargoValue);
+          const fee = parseFloat(formData.shippingFee);
+          const rate = parseFloat(formData.demurrageRatePerHour);
+          const freeTime = parseInt(formData.freeTimeHours);
+          const hasPOLoan = formData.poId !== '';
+          const poIdNum = hasPOLoan ? parseInt(formData.poId) : undefined;
+          const tokenAddr = formData.tokenType === 'EURC' ? EURC_ADDRESS : USDC_ADDRESS;
+
+          const newShipment: ShipmentData = {
+            id: newId,
+            buyer: signerType === 'web3' && connectedAddress ? connectedAddress : wallet.address,
+            supplier: formData.supplier,
+            carrier: formData.carrier,
+            cargoValue: val,
+            shippingFee: fee,
+            releasedSupplierAmount: 0,
+            releasedCarrierAmount: 0,
+            departurePort: formData.departurePort,
+            destinationPort: formData.destinationPort,
+            status: 'Created',
+            arrivedTimestamp: 0,
+            customClearanceTimestamp: 0,
+            pickupTimestamp: 0,
+            freeTimeHours: freeTime,
+            demurrageRatePerHour: rate,
+            demurragePenaltyPaid: 0,
+            passportTokenId: newId * 100,
+            temperature: 4.2,
+            location: formData.departurePort,
+            history: [
+              { timestamp: Date.now(), status: 'Created', location: formData.departurePort, temperature: 4.2 }
+            ],
+            createdTimestamp: Date.now(),
+            yieldEarned: 0,
+            temperatureViolations: 0,
+            temperaturePenalty: 0,
+            beneficiary: formData.supplier,
+            factoringPrice: 0,
+            factoringActive: false,
+            token: tokenAddr,
+            poId: hasPOLoan ? poIdNum : undefined,
+            hasPOLoan: hasPOLoan,
+            lockedFxRate: activeFxRate
+          };
+
+          // Handle local PO repayment waterfall
+          if (formData.poId !== '') {
+            const po = poLoans.find(p => p.id === poIdNum);
+            if (po) {
+              po.repaid = true;
+              newShipment.releasedSupplierAmount = po.repaymentAmount;
+              logTerminal(`[PO REPAYMENT WATERFALL] PO Loan #${poIdNum} Repayment amount (${po.repaymentAmount} ${formData.tokenType}) sent directly to Investor.`);
+            }
+          }
+
+          const updated = [newShipment, ...shipments];
+          setShipments(updated);
+          saveLocalShipments(updated);
+          setSelectedShipmentId(newId);
+
+          logTerminal(`[Simulated Shipment] Local cargo escrow created successfully! ID: ${newId}. (CORS/Gas Fallback)`);
+          showToast(`Onchain creation failed. Simulated shipment #${newId} created!`, 'warning');
+          
+          setIsCreatingShipment(false);
+          setCreateProgress('');
+          setFormData({
+            ...formData,
+            poId: '',
+            cctpPending: false,
+            useUnifiedBalance: false
+          });
+        } else {
+          showToast('Token transfer or creation failed. Fund your address.', 'error');
+          setIsCreatingShipment(false);
+          setCreateProgress('');
+        }
       } finally {
         setLoading(false);
       }
@@ -424,9 +674,9 @@ export default function EscrowTab() {
       logTerminal(`Local PO Request #${newId} created. Capped interest: 5% (Total Repayment: ${newPO.repaymentAmount} ${poRequestForm.tokenType})`);
       showToast('Local PO Request Created!', 'success');
       setPoRequestForm({
-        buyer: '0x9b1C51cEF8bc8757ad757845ef80A390a3b9d194',
-        cargoValue: '1000',
-        loanAmount: '800',
+        buyer: '0x9b1C51CEF8BC8757Ad757845eF80a390A3b9D194',
+        cargoValue: '4.0',
+        loanAmount: '3.0',
         tokenType: 'USDC'
       });
       setPoProgress('');
@@ -438,8 +688,58 @@ export default function EscrowTab() {
         setPoProgress('');
         return;
       }
+
+      // Auto-fund active wallet if it lacks gas
+      const activeUserAddress = signerType === 'web3' && connectedAddress ? connectedAddress : 
+                               signerType === 'circle' && circleSession?.address ? circleSession.address : 
+                               wallet?.address;
+
+      if (activeUserAddress) {
+        setPoProgress('Checking wallet balances...');
+        let gasVal = 0;
+        try {
+          const realTimeBal = await queryBalances(activeUserAddress as `0x${string}`);
+          gasVal = parseFloat(realTimeBal.nativeGas);
+          logTerminal(`Real-time wallet balance (PO Request): Gas = ${gasVal} USDC`);
+        } catch (balErr) {
+          console.error("Error querying real-time balance:", balErr);
+          const currentBalances = signerType === 'web3' ? web3Balances : 
+                                  signerType === 'circle' ? circleBalances : 
+                                  sandboxBalances;
+          gasVal = parseFloat(currentBalances?.nativeGas || '0');
+        }
+        
+        if (gasVal < 0.05) {
+          logTerminal(`[Auto-Funding] Low gas balance (${gasVal} USDC) for ${activeUserAddress.slice(0, 10)}... Requesting faucet auto-boost...`);
+          setPoProgress('Auto-funding wallet...');
+          
+          try {
+            const res = await fetch('/api/faucet', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ address: activeUserAddress })
+            });
+            const data = await res.json();
+            if (res.ok && !data.error) {
+              logTerminal(`[Auto-Funding Success] Gas Tx: ${data.gasTxHash.slice(0, 15)}...`);
+              showToast('Auto-funded wallet with gas!', 'success');
+              await new Promise(r => setTimeout(r, 1500));
+              await updateBalances(activeUserAddress, signerType);
+            } else {
+              logTerminal(`[Auto-Funding Failed] ${data.error || 'Server faucet error'}`);
+              throw new Error(`Auto-funding failed: ${data.error || 'Server faucet error'}`);
+            }
+          } catch (faucetErr) {
+            console.error('Auto-funding error:', faucetErr);
+            throw faucetErr;
+          }
+        }
+      }
+
       try {
-        const signer = (signerType === 'web3' && browserWalletClient ? browserWalletClient : wallet.privateKey) as string | WalletClient;
+        const signer = (signerType === 'web3' && browserWalletClient ? browserWalletClient :
+                        signerType === 'circle' && circleSession ? circleSession :
+                        wallet.privateKey) as any;
         const { poId, txHash } = await requestPOFinancingOnchain(
           signer,
           contracts,
@@ -458,9 +758,9 @@ export default function EscrowTab() {
         logTerminal(`Tx Confirmed: ${txHash.slice(0, 15)}...`);
         await refreshPOLoansList('live', contracts);
         setPoRequestForm({
-          buyer: '0x9b1C51cEF8bc8757ad757845ef80A390a3b9d194',
-          cargoValue: '1000',
-          loanAmount: '800',
+          buyer: '0x9b1C51CEF8BC8757Ad757845eF80a390A3b9D194',
+          cargoValue: '4.0',
+          loanAmount: '3.0',
           tokenType: 'USDC'
         });
       } catch (err) {
@@ -512,8 +812,61 @@ export default function EscrowTab() {
         setPoProgress('');
         return;
       }
+
+      // Auto-fund active wallet if it lacks gas or tokens
+      const activeUserAddress = signerType === 'web3' && connectedAddress ? connectedAddress : 
+                               signerType === 'circle' && circleSession?.address ? circleSession.address : 
+                               wallet?.address;
+
+      if (activeUserAddress) {
+        setPoProgress('Checking wallet balances...');
+        let gasVal = 0;
+        let tokenVal = 0;
+        try {
+          const realTimeBal = await queryBalances(activeUserAddress as `0x${string}`);
+          gasVal = parseFloat(realTimeBal.nativeGas);
+          tokenVal = parseFloat(loan.token === EURC_ADDRESS ? realTimeBal.eurcToken : realTimeBal.usdcToken);
+          logTerminal(`Real-time wallet balance (Fund PO): Gas = ${gasVal} USDC, Token = ${tokenVal} ${loan.token === EURC_ADDRESS ? 'EURC' : 'USDC'}`);
+        } catch (balErr) {
+          console.error("Error querying real-time balance:", balErr);
+          const currentBalances = signerType === 'web3' ? web3Balances : 
+                                  signerType === 'circle' ? circleBalances : 
+                                  sandboxBalances;
+          gasVal = parseFloat(currentBalances?.nativeGas || '0');
+          tokenVal = parseFloat(loan.token === EURC_ADDRESS ? currentBalances?.eurcToken || '0' : currentBalances?.usdcToken || '0');
+        }
+        
+        if (gasVal < 0.05 || tokenVal < loan.loanRequested) {
+          logTerminal(`[Auto-Funding] Low balance for ${activeUserAddress.slice(0, 10)}... (Gas: ${gasVal} USDC, Token: ${tokenVal}). Requesting faucet auto-boost...`);
+          setPoProgress('Auto-funding wallet...');
+          
+          try {
+            const res = await fetch('/api/faucet', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ address: activeUserAddress })
+            });
+            const data = await res.json();
+            if (res.ok && !data.error) {
+              logTerminal(`[Auto-Funding Success] Gas Tx: ${data.gasTxHash.slice(0, 15)}... ERC20 Tx: ${data.erc20TxHash.slice(0, 15)}...`);
+              showToast('Auto-funded wallet with gas and tokens!', 'success');
+              await new Promise(r => setTimeout(r, 1500));
+              await updateBalances(activeUserAddress, signerType);
+            } else {
+              logTerminal(`[Auto-Funding Failed] ${data.error || 'Server faucet error'}`);
+              throw new Error(`Auto-funding failed: ${data.error || 'Server faucet error'}`);
+            }
+          } catch (faucetErr) {
+            console.error('Auto-funding error:', faucetErr);
+            throw faucetErr;
+          }
+        }
+      }
+
       try {
-        const signer = (signerType === 'web3' && browserWalletClient ? browserWalletClient : wallet.privateKey) as string | WalletClient;
+        const signer = (signerType === 'web3' && browserWalletClient ? browserWalletClient :
+                        signerType === 'circle' && circleSession ? circleSession :
+                        wallet.privateKey) as any;
         const hash = await fundPOLoanOnchain(
           signer,
           contracts,
@@ -553,29 +906,31 @@ export default function EscrowTab() {
     }
   };
 
+  const [showPOSection, setShowPOSection] = useState(false);
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
       
       {/* Header with Create Button */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div className="section-header">
         <div>
-          <h2 style={{ fontSize: '1.3rem' }}>Milestone Escrow Transactions</h2>
-          <p style={{ fontSize: '0.8rem' }}>Deploys or tracks secure cargo payment vaults with automated release conditions.</p>
+          <h2 className="section-title">Escrow Shipments</h2>
+          <p className="section-subtitle">Secure cargo payment vaults with automated milestone releases.</p>
         </div>
         
         {!isCreatingShipment && (
           <button onClick={() => setIsCreatingShipment(true)} className="btn btn-primary">
-            <Box size={16} /> Create Escrow Vault
+            <Box size={16} /> Create Escrow
           </button>
         )}
       </div>
 
       {/* StableFX Live conversion and Create Escrow form side-by-side */}
       {isCreatingShipment && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '1.5rem' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
           
           {/* Escrow Creation Form */}
-          <div className="glass-panel" style={{ border: '1px solid var(--primary)' }}>
+          <div className="glass-panel" style={{ borderColor: 'var(--primary-border)', padding: '1.5rem' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
               <h3 style={{ fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <Anchor size={18} style={{ color: 'var(--primary)' }} /> Configure New Escrow Vault
@@ -599,7 +954,7 @@ export default function EscrowTab() {
                       setFormData({
                         ...formData,
                         poId: '',
-                        supplier: '0x8d92F677cD6303Cec089B5F319D72aA797da53',
+                        supplier: '0x8D92F677cd6303cEc089B5F319D72Aa797Da5300',
                         cargoValue: '500',
                         tokenType: 'USDC'
                       });
@@ -877,26 +1232,25 @@ export default function EscrowTab() {
       )}
 
       {/* Shipments List */}
-      <div className="glass-panel">
+      <div>
         {loading && shipments.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '3rem 0' }}>
-            <Loader2 className="animate-spin-slow" size={32} style={{ color: 'var(--primary)', margin: '0 auto 1rem' }} />
-            <p>Querying digital escrow ledgers...</p>
+          <div style={{ textAlign: 'center', padding: '64px 0' }}>
+            <Loader2 className="animate-spin-slow" size={28} style={{ color: 'var(--primary)', margin: '0 auto 16px' }} />
+            <p style={{ fontSize: '14px' }}>Loading shipments...</p>
           </div>
         ) : shipments.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '3rem 0', border: '1px dashed var(--border-color)', borderRadius: '12px' }}>
-            <Anchor size={36} style={{ color: 'var(--text-muted)', marginBottom: '0.75rem' }} />
-            <h3 style={{ fontSize: '1rem', marginBottom: '0.25rem' }}>No Escrow Shipments Found</h3>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
-              Initiate a new container booking to protect funds under automation.
+          <div style={{ textAlign: 'center', padding: '64px 0' }}>
+            <Anchor size={32} style={{ color: 'var(--text-muted)', marginBottom: '12px' }} />
+            <h3 style={{ fontSize: '16px', marginBottom: '8px' }}>No Escrow Shipments</h3>
+            <p style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '20px' }}>
+              Create a cargo escrow to get started.
             </p>
             <button onClick={() => setIsCreatingShipment(true)} className="btn btn-primary">
-              Create Your First Escrow
+              Create Escrow
             </button>
           </div>
         ) : (
           <div>
-            <h3 style={{ fontSize: '1rem', marginBottom: '1rem' }}>Active Cargo Escrow Registry</h3>
             <div className="custom-table-container">
               <table className="custom-table">
                 <thead>
@@ -919,7 +1273,7 @@ export default function EscrowTab() {
                         onClick={() => setSelectedShipmentId(s.id)}
                         style={{ 
                           cursor: 'pointer',
-                          background: selectedShipmentId === s.id ? 'rgba(0,136,255,0.06)' : 'transparent' 
+                          background: selectedShipmentId === s.id ? 'var(--primary-soft)' : 'transparent' 
                         }}
                       >
                         <td style={{ fontWeight: 700, fontFamily: 'var(--font-mono)' }}>#{s.id}</td>
@@ -988,18 +1342,24 @@ export default function EscrowTab() {
         )}
       </div>
 
-      {/* PO Financing Section */}
+      {/* PO Financing Section — Progressive Disclosure */}
       <div className="glass-panel">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
+        <div 
+          style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
+          onClick={() => setShowPOSection(!showPOSection)}
+        >
           <div>
-            <h3 style={{ fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--success)' }}>
-              <Coins size={18} /> Purchase Order Financing Marketplace
+            <h3 className="section-title" style={{ fontSize: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Coins size={18} style={{ color: 'var(--success)' }} /> Purchase Order Financing
             </h3>
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Allows suppliers to raise pre-shipment working capital directly from liquidity pools. Repayments are securely auto-deducted when buyers fund the main shipment escrow.</p>
+            <p className="section-subtitle" style={{ marginTop: '4px' }}>Pre-shipment working capital with auto-repayment on escrow deposit.</p>
           </div>
+          <button className="btn btn-secondary" style={{ fontSize: '13px', padding: '6px 14px' }}>
+            {showPOSection ? 'Collapse' : 'Expand'}
+          </button>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        {showPOSection && <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', marginTop: '24px' }}>
           
           {/* Request Form */}
           <div style={{ background: 'rgba(0,0,0,0.15)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '1.25rem' }}>
@@ -1128,7 +1488,7 @@ export default function EscrowTab() {
             </table>
           </div>
 
-        </div>
+        </div>}
       </div>
 
     </div>

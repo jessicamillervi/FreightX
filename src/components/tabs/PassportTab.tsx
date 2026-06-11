@@ -44,7 +44,7 @@ export default function PassportTab() {
   const { showToast, logTerminal, contracts, setActiveTab, appMode } = useAppContext();
   const { shipments, selectedShipmentId } = useShipments();
   const { poLoans } = usePOLoans();
-  const { wallet } = useWallet();
+  const { wallet, signerType, connectedAddress, browserWalletClient, circleSession } = useWallet();
 
   // Local VC Modal States
   const [showVcModal, setShowVcModal] = useState(false);
@@ -59,9 +59,9 @@ export default function PassportTab() {
   // Dynamic Credit Passport computation from real shipment/PO data
   const computePassportStats = useCallback((role: 'supplier' | 'buyer' | 'carrier') => {
     const addrMap: Record<string, string> = {
-      supplier: '0x8d92F677cD6303Cec089B5F319D72aA797da53',
-      buyer: '0x9b1C51cEF8bc8757ad757845ef80A390a3b9d194',
-      carrier: '0x1c902E11a58c4bb489b3ab1c51cef8bc8757845e'
+      supplier: '0x8D92F677cd6303cEc089B5F319D72Aa797Da5300',
+      buyer: '0x9b1C51CEF8BC8757Ad757845eF80a390A3b9D194',
+      carrier: '0x1C902e11A58c4BB489B3ab1c51CEf8BC8757845E'
     };
     const nameMap: Record<string, string> = {
       supplier: 'Shenzhen Maritime Suppliers',
@@ -219,17 +219,30 @@ export default function PassportTab() {
       });
 
       // 2. On-Chain Live Tx Call
-      if (appMode === 'live' && contracts && wallet) {
+      if (appMode === 'live' && contracts) {
         logTerminal(`[Live mode] Invoking mintDocument on FreightDocuments (${contracts.documents})...`);
         const publicClient = getPublicClient();
-        const walletClient = resolveWalletClient(wallet.privateKey);
+        
+        const signer = (signerType === 'web3' && browserWalletClient ? browserWalletClient :
+                        signerType === 'circle' && circleSession ? circleSession :
+                        wallet?.privateKey) as any;
+        if (!signer) {
+          throw new Error("No active wallet or signer available for minting.");
+        }
+        const walletClient = resolveWalletClient(signer);
+        const activeAddress = signerType === 'web3' && connectedAddress ? connectedAddress :
+                              signerType === 'circle' && circleSession?.address ? circleSession.address :
+                              wallet?.address;
+        if (!activeAddress) {
+          throw new Error("No active address available.");
+        }
 
         const mintTx = await walletClient.writeContract({
           address: contracts.documents as Address,
           abi: documentsArtifact.abi,
           functionName: 'mintDocument',
           args: [
-            wallet.address,
+            activeAddress,
             cid,
             BigInt(currentShipment.passportTokenId),
             bolData.shipper,
@@ -294,14 +307,14 @@ export default function PassportTab() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
       
       {/* SME Credit Passports Row */}
       <div className="glass-panel">
-        <h2 style={{ fontSize: '1.3rem', marginBottom: '0.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <Award size={20} style={{ color: 'var(--success)' }} /> Trade Passport & SME Credit Scorecard
+        <h2 className="section-title" style={{ marginBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <Award size={20} style={{ color: 'var(--success)' }} /> Trade Passport & Credit Scorecard
         </h2>
-        <p style={{ fontSize: '0.8rem', marginBottom: '1.5rem' }}>Reputation records, lifetime trade volume, and cold-chain reliability indices computed automatically from immutable logistics performance.</p>
+        <p className="section-subtitle" style={{ marginBottom: '24px' }}>Reputation records and cold-chain reliability computed from immutable logistics performance.</p>
 
         <div className="grid-cols-3">
           {(['supplier', 'buyer', 'carrier'] as const).map((role) => {
@@ -363,14 +376,14 @@ export default function PassportTab() {
       </div>
 
       {selectedShipmentId === null || !currentShipment ? (
-        <div className="glass-panel" style={{ textAlign: 'center', padding: '3rem 0', border: '1px dashed var(--border-color)', borderRadius: '12px' }}>
-          <ScanQrCode size={36} style={{ color: 'var(--text-muted)', marginBottom: '0.75rem' }} />
-          <h3 style={{ fontSize: '1rem', marginBottom: '0.25rem' }}>No Cargo Shipment Selected</h3>
-          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
-            Please select a cargo shipment from the registry to view its ERC-721 physical-asset passport token details & transit telemetry logs.
+        <div style={{ textAlign: 'center', padding: '64px 0' }}>
+          <ScanQrCode size={28} style={{ color: 'var(--text-muted)', marginBottom: '12px' }} />
+          <h3 style={{ fontSize: '16px', marginBottom: '8px' }}>No Shipment Selected</h3>
+          <p style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '20px' }}>
+            Select a shipment to view its ERC-721 digital passport and telemetry logs.
           </p>
           <button onClick={() => setActiveTab('escrows')} className="btn btn-secondary">
-            Go to Cargo Registry
+            Go to Escrow Shipments
           </button>
         </div>
       ) : (

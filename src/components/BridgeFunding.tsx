@@ -35,7 +35,7 @@ interface BridgeState {
 }
 
 export function BridgeFunding({ shipmentId, requiredAmount, onComplete }: BridgeFundingProps) {
-  const { wallet, contracts, signerType, browserWalletClient, logTerminal, showToast } = useAppContext();
+  const { wallet, contracts, signerType, browserWalletClient, logTerminal, showToast, circleSession } = useAppContext();
   const { isConnected, chainId } = useAccount();
   const { data: sourceWalletClient } = useWalletClient();
   const { switchChainAsync } = useSwitchChain();
@@ -109,12 +109,11 @@ export function BridgeFunding({ shipmentId, requiredAmount, onComplete }: Bridge
       logTerminal(`[CCTP Bridge] Initiating real bridge from ${sourceChainName} for Shipment #${shipmentId}...`);
       
       // Determine destination signer
-      let destSigner: string | WalletClient;
+      let destSigner: any;
       if (signerType === 'web3' && browserWalletClient) {
         destSigner = browserWalletClient as unknown as WalletClient;
-      } else if (signerType === 'circle' && wallet) {
-        // Circle smart wallet uses the passkey credentials for signing
-        destSigner = wallet.privateKey; // fallback
+      } else if (signerType === 'circle' && circleSession) {
+        destSigner = circleSession;
       } else if (wallet) {
         destSigner = wallet.privateKey;
       } else {

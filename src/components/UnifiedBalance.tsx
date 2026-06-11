@@ -59,10 +59,9 @@ export default function UnifiedBalance() {
             <button 
               onClick={() => getBalances()} 
               disabled={loading}
-              className="flex-center" 
+              className="flex-center btn btn-secondary btn-icon" 
               style={{
-                background: 'rgba(255,255,255,0.05)', border: '1px solid var(--border-color)', borderRadius: '8px',
-                width: '32px', height: '32px', color: 'var(--text-main)', cursor: 'pointer', transition: 'all 0.2s'
+                width: '32px', height: '32px'
               }}
               title="Refresh balances"
             >
@@ -71,7 +70,7 @@ export default function UnifiedBalance() {
             <button 
               onClick={() => setShowDepositForm(!showDepositForm)} 
               className="btn btn-primary"
-              style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+              style={{ padding: '4px 12px', fontSize: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}
             >
               <Plus size={14} /> Deposit
             </button>
@@ -84,7 +83,7 @@ export default function UnifiedBalance() {
               Aggregated Stablecoin Pool
             </span>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', margin: '0.25rem 0' }}>
-              <span style={{ fontSize: '2rem', fontWeight: 800, fontFamily: 'var(--font-mono)', color: 'var(--text-main)' }}>
+              <span style={{ fontSize: '2rem', fontWeight: 800, fontFamily: 'var(--font-mono)', color: 'var(--text-primary)' }}>
                 {unifiedBalance.confirmed.toFixed(2)}
               </span>
               <span style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--primary)' }}>USDC</span>
@@ -97,7 +96,7 @@ export default function UnifiedBalance() {
             )}
           </div>
 
-          <div style={{ background: 'rgba(0,0,0,0.15)', borderRadius: '10px', padding: '0.75rem', border: '1px solid rgba(255,255,255,0.03)' }}>
+          <div style={{ background: 'var(--bg-hover)', borderRadius: '10px', padding: '0.75rem', border: '1px solid var(--border)' }}>
             <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.5rem', fontWeight: 600 }}>
               CHAIN ALLOCATIONS:
             </span>

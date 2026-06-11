@@ -262,7 +262,7 @@ export function OnboardingHub({
             background: 'rgba(0,0,0,0.15)',
             padding: '0.75rem',
             borderRadius: '12px',
-            border: '1px solid var(--border-color)'
+            border: '1px solid var(--border)'
           }}>
             {steps.map((step) => {
               const isActive = activeStep === step.num;
@@ -353,12 +353,12 @@ export function OnboardingHub({
           {showDictionary && (
             <div style={{ 
               background: 'var(--bg-main)', 
-              border: '1px solid var(--border-color)', 
+              border: '1px solid var(--border)', 
               borderRadius: '12px', 
               padding: '1rem',
               animation: 'fadeIn 0.2s ease-out'
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem', borderBottom: '1px solid var(--border)', paddingBottom: '0.5rem' }}>
                 <BookOpen size={16} style={{ color: 'var(--primary)' }} />
                 <h4 style={{ fontSize: '0.85rem', fontWeight: 700, margin: 0 }}>Translating Technical Web3 into Business Terms</h4>
               </div>
@@ -366,7 +366,7 @@ export function OnboardingHub({
                 {dictionaryItems.map((item, idx) => (
                   <div key={idx} style={{ 
                     background: 'rgba(255,255,255,0.01)', 
-                    border: '1px solid var(--border-color)', 
+                    border: '1px solid var(--border)', 
                     borderRadius: '8px', 
                     padding: '0.65rem'
                   }}>
@@ -387,7 +387,7 @@ export function OnboardingHub({
           )}
 
           {/* Safety and Reassurance trust line */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center', borderTop: '1px solid var(--border-color)', paddingTop: '0.75rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', justifyContent: 'center', borderTop: '1px solid var(--border)', paddingTop: '0.75rem' }}>
             <Lock size={12} style={{ color: 'var(--success)' }} />
             <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
               Secured via automated digital signing on the Circle Arc blockchain. Settlement tokens maintain strict 1:1 parity with fiat USD.

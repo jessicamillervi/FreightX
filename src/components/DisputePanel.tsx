@@ -125,20 +125,20 @@ export const DisputePanel: React.FC<DisputePanelProps> = ({ currentAddress, onRe
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
       {/* File Dispute Form */}
-      <div className="lg:col-span-1 bg-slate-900/60 backdrop-blur-md border border-slate-800 rounded-xl p-6 shadow-xl relative overflow-hidden">
+      <div className="glass-panel">
         <div className="absolute top-0 left-0 w-48 h-48 bg-red-500/5 rounded-full blur-3xl -z-10 pointer-events-none" />
         
-        <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2 font-display">
+        <h2 className="text-lg font-bold text-[var(--text-primary)] mb-4 flex items-center gap-2 font-display">
           <span className="w-2 h-2 rounded-full bg-red-500" />
           File Multi-Sig Dispute
         </h2>
-        <p className="text-slate-400 text-xs mb-4">
+        <p className="text-[var(--text-secondary)] text-xs mb-4">
           Lock escrow payout execution and trigger arbitrator intervention for damaged or delayed cargo.
         </p>
 
         <form onSubmit={handleRaiseDispute} className="space-y-4">
           <div>
-            <label className="block text-slate-400 text-xs font-semibold mb-1">Target Shipment</label>
+            <label className="block text-[var(--text-secondary)] text-xs font-semibold mb-1">Target Shipment</label>
             <select
               value={selectedShipmentId}
               onChange={(e) => {
@@ -153,7 +153,7 @@ export const DisputePanel: React.FC<DisputePanelProps> = ({ currentAddress, onRe
                 }
               }}
               required
-              className="w-full bg-slate-950 border border-slate-800 focus:border-red-500/50 rounded-lg p-2.5 text-xs text-white outline-none transition-colors"
+              className="form-select border-[var(--border)] focus:border-red-550/45 focus:ring-1 focus:ring-red-550/45"
             >
               <option value="">Select Shipment...</option>
               {shipments
@@ -168,7 +168,7 @@ export const DisputePanel: React.FC<DisputePanelProps> = ({ currentAddress, onRe
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-slate-400 text-xs font-semibold mb-1">Proposed Supplier Payout</label>
+              <label className="block text-[var(--text-secondary)] text-xs font-semibold mb-1">Proposed Supplier Payout</label>
               <input
                 type="number"
                 step="0.01"
@@ -176,11 +176,11 @@ export const DisputePanel: React.FC<DisputePanelProps> = ({ currentAddress, onRe
                 value={proposedSupplier}
                 onChange={(e) => setProposedSupplier(e.target.value)}
                 required
-                className="w-full bg-slate-950 border border-slate-800 focus:border-red-500/50 rounded-lg p-2.5 text-xs text-white outline-none"
+                className="form-input border-[var(--border)] focus:border-red-550/45 focus:ring-1 focus:ring-red-550/45"
               />
             </div>
             <div>
-              <label className="block text-slate-400 text-xs font-semibold mb-1">Proposed Carrier Payout</label>
+              <label className="block text-[var(--text-secondary)] text-xs font-semibold mb-1">Proposed Carrier Payout</label>
               <input
                 type="number"
                 step="0.01"
@@ -188,39 +188,39 @@ export const DisputePanel: React.FC<DisputePanelProps> = ({ currentAddress, onRe
                 value={proposedCarrier}
                 onChange={(e) => setProposedCarrier(e.target.value)}
                 required
-                className="w-full bg-slate-950 border border-slate-800 focus:border-red-500/50 rounded-lg p-2.5 text-xs text-white outline-none"
+                className="form-input border-[var(--border)] focus:border-red-550/45 focus:ring-1 focus:ring-red-550/45"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-slate-400 text-xs font-semibold mb-1">Evidence IPFS Document Hash</label>
+            <label className="block text-[var(--text-secondary)] text-xs font-semibold mb-1">Evidence IPFS Document Hash</label>
             <input
               type="text"
               placeholder="e.g. QmTemperatureViolationVerificationHash"
               value={evidenceHash}
               onChange={(e) => setEvidenceHash(e.target.value)}
               required
-              className="w-full bg-slate-950 border border-slate-800 focus:border-red-500/50 rounded-lg p-2.5 text-xs text-white outline-none font-mono"
+              className="form-input font-mono border-[var(--border)] focus:border-red-550/45 focus:ring-1 focus:ring-red-550/45"
             />
           </div>
 
           <div>
-            <label className="block text-slate-400 text-xs font-semibold mb-1">Dispute Reason / IoT Log References</label>
+            <label className="block text-[var(--text-secondary)] text-xs font-semibold mb-1">Dispute Reason / IoT Log References</label>
             <textarea
               placeholder="Provide context regarding damaged cargo, temperature logs or compliance failures..."
               value={violationsReason}
               onChange={(e) => setViolationsReason(e.target.value)}
               required
               rows={3}
-              className="w-full bg-slate-950 border border-slate-800 focus:border-red-500/50 rounded-lg p-2.5 text-xs text-white outline-none resize-none"
+              className="form-input resize-none border-[var(--border)] focus:border-red-550/45 focus:ring-1 focus:ring-red-550/45"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading || selectedShipmentId === ''}
-            className="w-full py-2.5 bg-red-950/60 hover:bg-red-600 border border-red-900/50 hover:border-red-500 text-white rounded-lg text-xs font-semibold shadow-lg transition-all duration-200 disabled:opacity-50"
+            className="btn btn-secondary text-red-650 border-red-200 hover:bg-red-50/50 w-full"
           >
             {loading ? 'Filing...' : 'Lock Escrow & Open Dispute'}
           </button>
@@ -228,22 +228,22 @@ export const DisputePanel: React.FC<DisputePanelProps> = ({ currentAddress, onRe
       </div>
 
       {/* Disputes Resolution Queue */}
-      <div className="lg:col-span-2 bg-slate-900/60 backdrop-blur-md border border-slate-800 rounded-xl p-6 shadow-xl relative overflow-hidden">
+      <div className="lg:col-span-2 glass-panel">
         <div className="absolute top-0 right-0 w-64 h-64 bg-amber-500/5 rounded-full blur-3xl -z-10 pointer-events-none" />
 
-        <h2 className="text-lg font-bold text-white mb-2 flex items-center gap-2 font-display">
+        <h2 className="text-lg font-bold text-[var(--text-primary)] mb-2 flex items-center gap-2 font-display">
           <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
           Disputes Arbitration Docket
         </h2>
-        <p className="text-slate-400 text-xs mb-6">
+        <p className="text-[var(--text-secondary)] text-xs mb-6">
           Multi-sig dispute arbitration panel. Required: 3-of-5 concordant votes to resolve and execute payout.
         </p>
 
         {message && (
           <div className={`mb-6 p-4 rounded-lg text-xs border ${
             message.type === 'success' 
-              ? 'bg-emerald-950/30 border-emerald-800 text-emerald-400' 
-              : 'bg-red-950/30 border-red-800 text-red-400'
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-700' 
+              : 'bg-red-50 border-red-200 text-red-700'
           }`}>
             {message.text}
           </div>
@@ -251,7 +251,7 @@ export const DisputePanel: React.FC<DisputePanelProps> = ({ currentAddress, onRe
 
         <div className="space-y-6">
           {disputes.length === 0 ? (
-            <div className="text-center py-12 border border-dashed border-slate-800 rounded-xl text-slate-500 text-xs">
+            <div className="text-center py-12 border border-dashed border-[var(--border)] rounded-xl text-[var(--text-muted)] text-xs">
               No active disputes in docket queue. Escrows proceeding normally.
             </div>
           ) : (
@@ -271,66 +271,66 @@ export const DisputePanel: React.FC<DisputePanelProps> = ({ currentAddress, onRe
               });
 
               return (
-                <div key={d.id} className="border border-slate-800 rounded-xl bg-slate-950/40 p-5 relative">
+                <div key={d.id} className="border border-[var(--border)] rounded-xl bg-[var(--bg-main)] p-5 relative">
                   <div className="flex justify-between items-start mb-4">
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-white font-display">Dispute #{d.id}</span>
-                        <span className="text-slate-500 text-xs font-medium">• Shipment #{d.shipmentId}</span>
+                        <span className="text-sm font-bold text-[var(--text-primary)] font-display">Dispute #{d.id}</span>
+                        <span className="text-[var(--text-secondary)] text-xs font-medium">• Shipment #{d.shipmentId}</span>
                       </div>
-                      <p className="text-[10px] text-slate-500 mt-0.5 font-mono">Claimant: {d.claimant}</p>
+                      <p className="text-[10px] text-[var(--text-muted)] mt-0.5 font-mono">Claimant: {d.claimant}</p>
                     </div>
                     
                     <span className={`px-2.5 py-1 rounded text-[10px] font-semibold ${
                       d.resolved 
-                        ? 'bg-emerald-950 text-emerald-400 border border-emerald-900' 
-                        : 'bg-amber-950 text-amber-400 border border-amber-900 animate-pulse'
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                        : 'bg-amber-50 text-amber-700 border border-amber-200 animate-pulse'
                     }`}>
                       {d.resolved ? 'RESOLVED' : 'ACTIVE DISPUTE'}
                     </span>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 text-xs">
-                    <div className="bg-slate-950 border border-slate-800/80 rounded-lg p-3">
-                      <span className="text-[10px] text-slate-500 uppercase font-semibold">Claimant Proposal</span>
-                      <div className="grid grid-cols-2 gap-2 mt-1.5 font-semibold text-white">
+                    <div className="bg-[var(--bg-elevated)] border border-[var(--border)] rounded-lg p-3">
+                      <span className="text-[10px] text-[var(--text-muted)] uppercase font-semibold">Claimant Proposal</span>
+                      <div className="grid grid-cols-2 gap-2 mt-1.5 font-semibold text-[var(--text-primary)]">
                         <div>Supplier: {d.proposedSupplierPayout} USDC</div>
                         <div>Carrier: {d.proposedCarrierPayout} USDC</div>
                       </div>
                     </div>
 
-                    <div className="bg-slate-950 border border-slate-800/80 rounded-lg p-3">
-                      <span className="text-[10px] text-slate-500 uppercase font-semibold">Consensus Verdict</span>
-                      <div className="grid grid-cols-2 gap-2 mt-1.5 font-semibold text-white">
+                    <div className="bg-[var(--bg-elevated)] border border-[var(--border)] rounded-lg p-3">
+                      <span className="text-[10px] text-[var(--text-muted)] uppercase font-semibold">Consensus Verdict</span>
+                      <div className="grid grid-cols-2 gap-2 mt-1.5 font-semibold text-[var(--text-primary)]">
                         {d.resolved ? (
                           <>
-                            <div className="text-emerald-400">Supplier: {d.verdictSupplierPayout} USDC</div>
-                            <div className="text-emerald-400">Carrier: {d.verdictCarrierPayout} USDC</div>
+                            <div className="text-emerald-600">Supplier: {d.verdictSupplierPayout} USDC</div>
+                            <div className="text-emerald-600">Carrier: {d.verdictCarrierPayout} USDC</div>
                           </>
                         ) : (
-                          <div className="col-span-2 text-slate-500 italic">Awaiting voting quorum...</div>
+                          <div className="col-span-2 text-[var(--text-muted)] italic">Awaiting voting quorum...</div>
                         )}
                       </div>
                     </div>
                   </div>
 
-                  <div className="mb-4 text-xs bg-slate-900/30 border border-slate-800/40 rounded-lg p-3 text-slate-300">
-                    <div className="text-slate-500 text-[10px] uppercase font-semibold mb-1">Evidence Records</div>
-                    <div className="font-semibold text-white font-mono break-all text-[11px] mb-1.5">
-                      CID: <a href={`/api/documents?cid=${parsedEvidence.cid}`} target="_blank" rel="noreferrer" className="text-teal-400 underline">{parsedEvidence.cid}</a>
+                  <div className="mb-4 text-xs bg-[var(--bg-elevated)] border border-[var(--border)] rounded-lg p-3 text-[var(--text-primary)]">
+                    <div className="text-[var(--text-muted)] text-[10px] uppercase font-semibold mb-1">Evidence Records</div>
+                    <div className="font-semibold text-[var(--text-primary)] font-mono break-all text-[11px] mb-1.5">
+                      CID: <a href={`/api/documents?cid=${parsedEvidence.cid}`} target="_blank" rel="noreferrer" className="text-teal-600 underline">{parsedEvidence.cid}</a>
                     </div>
-                    {parsedEvidence.reason && <p className="italic text-slate-400 text-xs">Reason: "{parsedEvidence.reason}"</p>}
+                    {parsedEvidence.reason && <p className="italic text-[var(--text-secondary)] text-xs">Reason: "{parsedEvidence.reason}"</p>}
                   </div>
 
                   {/* Voters block */}
                   <div className="mb-4">
-                    <span className="text-[10px] text-slate-500 uppercase font-semibold block mb-2">Quorum Status ({d.voteCount}/5 Votes cast)</span>
+                    <span className="text-[10px] text-[var(--text-muted)] uppercase font-semibold block mb-2">Quorum Status ({d.voteCount}/5 Votes cast)</span>
                     {Object.keys(d.votes).length === 0 ? (
-                      <p className="text-slate-600 text-xs italic">No arbitrator votes cast yet.</p>
+                      <p className="text-[var(--text-muted)] text-xs italic">No arbitrator votes cast yet.</p>
                     ) : (
                       <div className="flex flex-wrap gap-2">
                         {Object.entries(d.votes).map(([voter, v], i) => (
-                          <span key={i} className="px-2.5 py-1 bg-slate-900 border border-slate-800 rounded-lg text-[10px] text-slate-300 font-mono">
+                          <span key={i} className="px-2.5 py-1 bg-[var(--bg-hover)] border border-[var(--border)] rounded-lg text-[10px] text-[var(--text-secondary)] font-mono">
                             {voter.slice(0, 6)}...{voter.slice(-4)}: (S: {v.supplierPayout} | C: {v.carrierPayout})
                           </span>
                         ))}
@@ -340,41 +340,41 @@ export const DisputePanel: React.FC<DisputePanelProps> = ({ currentAddress, onRe
 
                   {/* Arbitrator Voting Inputs */}
                   {!d.resolved && (
-                    <div className="border-t border-slate-800/80 pt-4 mt-2">
+                    <div className="border-t border-[var(--border)] pt-4 mt-2">
                       {isArbitrator ? (
                         <div>
-                          <span className="text-slate-300 text-xs font-semibold block mb-2">Submit Arbitrator Verdict Decision</span>
+                          <span className="text-[var(--text-primary)] text-xs font-semibold block mb-2">Submit Arbitrator Verdict Decision</span>
                           <div className="flex flex-col sm:flex-row gap-3 items-end">
                             <div className="flex-1">
-                              <label className="block text-slate-500 text-[10px] mb-1">Agreed Supplier Payout</label>
+                              <label className="block text-[var(--text-muted)] text-[10px] mb-1">Agreed Supplier Payout</label>
                               <input
                                 type="number"
                                 placeholder="Supplier"
                                 value={voteSupplier[d.id] || ''}
                                 onChange={(e) => setVoteSupplier({ ...voteSupplier, [d.id]: e.target.value })}
-                                className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white outline-none"
+                                className="form-input"
                               />
                             </div>
                             <div className="flex-1">
-                              <label className="block text-slate-500 text-[10px] mb-1">Agreed Carrier Payout</label>
+                              <label className="block text-[var(--text-muted)] text-[10px] mb-1">Agreed Carrier Payout</label>
                               <input
                                 type="number"
                                 placeholder="Carrier"
                                 value={voteCarrier[d.id] || ''}
                                 onChange={(e) => setVoteCarrier({ ...voteCarrier, [d.id]: e.target.value })}
-                                className="w-full bg-slate-950 border border-slate-800 rounded-lg p-2 text-xs text-white outline-none"
+                                className="form-input"
                               />
                             </div>
                             <button
                               onClick={() => handleCastVote(d.id)}
-                              className="px-5 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-xs font-semibold transition-all duration-200"
+                              className="btn btn-primary bg-amber-600 hover:bg-amber-700 border-amber-600 text-white px-5"
                             >
                               Cast Multi-Sig Vote
                             </button>
                           </div>
                         </div>
                       ) : (
-                        <p className="text-slate-500 text-xs italic">Only registered arbitrators can vote to resolve disputes.</p>
+                        <p className="text-[var(--text-muted)] text-xs italic">Only registered arbitrators can vote to resolve disputes.</p>
                       )}
                     </div>
                   )}

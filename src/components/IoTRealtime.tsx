@@ -317,14 +317,14 @@ export default function IoTRealtime() {
             <select 
               value={milestone} 
               onChange={(e) => setMilestone(e.target.value)} 
-              className="form-control"
-              style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', borderRadius: '6px', color: '#fff', padding: '0.5rem' }}
+              className="form-select"
+              style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border-color)', borderRadius: '6px', color: 'var(--text-primary)', padding: '0.5rem', width: '100%', height: '40px' }}
             >
-              <option value="departure">1. Departure ({currentShipment.departurePort})</option>
-              <option value="singapore">2. Singapore Checkpoint</option>
-              <option value="arrival">3. Arrival ({currentShipment.destinationPort})</option>
-              <option value="customs">4. Customs Clearance</option>
-              <option value="telemetry">Periodic Telemetry Update</option>
+              <option value="departure" style={{ color: 'var(--text-primary)', background: 'var(--bg-elevated)' }}>1. Departure ({currentShipment.departurePort})</option>
+              <option value="singapore" style={{ color: 'var(--text-primary)', background: 'var(--bg-elevated)' }}>2. Singapore Checkpoint</option>
+              <option value="arrival" style={{ color: 'var(--text-primary)', background: 'var(--bg-elevated)' }}>3. Arrival ({currentShipment.destinationPort})</option>
+              <option value="customs" style={{ color: 'var(--text-primary)', background: 'var(--bg-elevated)' }}>4. Customs Clearance</option>
+              <option value="telemetry" style={{ color: 'var(--text-primary)', background: 'var(--bg-elevated)' }}>Periodic Telemetry Update</option>
             </select>
           </div>
 

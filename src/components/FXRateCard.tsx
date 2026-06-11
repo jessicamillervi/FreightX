@@ -107,25 +107,33 @@ export default function FXRateCard() {
   const isSwapSupported = (fromCurrency === 'USDC' && toCurrency === 'EURC') || (fromCurrency === 'EURC' && toCurrency === 'USDC');
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6" style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+      
       {/* Live converter controls */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Converter fields */}
-        <div className="space-y-4 bg-zinc-900/40 border border-zinc-800/60 p-4 rounded-xl">
-          <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
-            <ArrowRightLeft className="h-3.5 w-3.5 text-emerald-400" />
-            StableFX FX Converter
-          </h4>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        
+        {/* Converter fields card */}
+        <div className="bg-[var(--bg-elevated)] border border-[var(--border)] p-6 rounded-2xl shadow-sm" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h4 style={{ fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
+              <ArrowRightLeft className="h-4 w-4 text-[var(--success)]" />
+              StableFX Converter
+            </h4>
+            <span style={{ fontSize: '10px', background: 'var(--success-soft)', color: 'var(--success)', padding: '2px 8px', borderRadius: '12px', fontWeight: 700 }}>
+              Live Oracle Rates
+            </span>
+          </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="text-[10px] text-zinc-500 font-semibold block mb-1">Source Currency</label>
+          {/* From / To Selectors */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: '6px' }}>Source Currency</label>
               <select
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                className="form-select"
+                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-main)', fontWeight: 600, fontSize: '13px' }}
                 value={fromCurrency}
                 onChange={(e) => {
                   setFromCurrency(e.target.value);
-                  // Ensure different target if identical
                   if (e.target.value === toCurrency) {
                     setToCurrency(e.target.value === 'USDC' ? 'EURC' : 'USDC');
                   }
@@ -140,10 +148,15 @@ export default function FXRateCard() {
               </select>
             </div>
 
-            <div>
-              <label className="text-[10px] text-zinc-500 font-semibold block mb-1">Target Stablecoin</label>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '18px 4px 0', color: 'var(--text-muted)' }}>
+              <ArrowRightLeft size={16} />
+            </div>
+
+            <div style={{ flex: 1 }}>
+              <label style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: '6px' }}>Target Stablecoin</label>
               <select
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2 text-xs text-white focus:outline-none focus:border-emerald-500"
+                className="form-select"
+                style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-main)', fontWeight: 600, fontSize: '13px' }}
                 value={toCurrency}
                 onChange={(e) => {
                   setToCurrency(e.target.value);
@@ -158,70 +171,100 @@ export default function FXRateCard() {
             </div>
           </div>
 
+          {/* Amount input */}
           <div>
-            <label className="text-[10px] text-zinc-500 font-semibold block mb-1">Input Amount</label>
-            <div className="relative">
+            <label style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: '6px' }}>Input Amount</label>
+            <div style={{ position: 'relative' }}>
               <input
                 type="number"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 placeholder="Enter amount..."
-                className="w-full bg-zinc-950 border border-zinc-800 rounded-lg p-2.5 pr-12 text-sm text-white focus:outline-none focus:border-emerald-500"
+                className="form-input"
+                style={{ width: '100%', padding: '12px 14px', fontSize: '15px', fontWeight: 700, borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-main)' }}
               />
-              <span className="absolute right-3 top-2.5 text-xs text-zinc-500 font-bold">{fromCurrency}</span>
+              <span style={{ position: 'absolute', right: '14px', top: '50%', transform: 'translateY(-50%)', fontSize: '12px', color: 'var(--text-primary)', fontWeight: 700 }}>
+                {fromCurrency}
+              </span>
             </div>
           </div>
 
-          <div className="bg-zinc-950 border border-zinc-850 p-3 rounded-lg flex items-center justify-between">
-            <div className="space-y-0.5">
-              <span className="text-[10px] text-zinc-500 font-semibold uppercase block">Live Quote Output</span>
+          {/* Live Quote Output & FX rate display */}
+          <div style={{
+            background: 'var(--bg-main)',
+            border: '1px solid var(--border)',
+            borderRadius: '12px',
+            padding: '16px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            minHeight: '68px'
+          }}>
+            <div>
+              <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: '2px' }}>Live Quote Output</span>
               {loading && !quote ? (
-                <span className="text-xs text-zinc-400 flex items-center gap-1">
-                  <RefreshCw className="h-3 w-3 animate-spin" /> Fetching quote...
+                <span style={{ fontSize: '13px', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <RefreshCw className="h-3 w-3 animate-spin text-[var(--success)]" /> Fetching quote...
                 </span>
               ) : (
-                <span className="text-base font-bold text-white">
-                  {quote ? parseFloat(quote.toAmount).toLocaleString(undefined, { minimumFractionDigits: 2 }) : '0.00'}{' '}
-                  <span className="text-xs text-zinc-400 font-normal">{toCurrency}</span>
+                <span style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'baseline', gap: '4px' }}>
+                  {quote ? parseFloat(quote.toAmount).toLocaleString(undefined, { minimumFractionDigits: 2 }) : '0.00'}
+                  <span style={{ fontSize: '12px', color: 'var(--text-secondary)', fontWeight: 600 }}>{toCurrency}</span>
                 </span>
               )}
             </div>
-            <div className="text-right">
-              <span className="text-[10px] text-zinc-500 font-semibold uppercase block">FX Rate</span>
-              <span className="text-xs font-semibold text-emerald-400">
+            <div style={{ textAlign: 'right' }}>
+              <span style={{ fontSize: '10px', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', display: 'block', marginBottom: '2px' }}>Oracle FX Rate</span>
+              <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--success)' }}>
                 1 {fromCurrency} = {currentRate.toFixed(4)} {toCurrency}
               </span>
             </div>
           </div>
         </div>
 
-        {/* Live graph Sparkline */}
-        <div className="flex flex-col justify-between bg-zinc-900/40 border border-zinc-800/60 p-4 rounded-xl">
-          <div className="flex items-center justify-between border-b border-zinc-800/80 pb-2">
-            <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
-              <TrendingUp className="h-3.5 w-3.5 text-cyan-400" />
+        {/* Live chart card */}
+        <div className="bg-[var(--bg-elevated)] border border-[var(--border)] p-6 rounded-2xl shadow-sm" style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h4 style={{ fontSize: '14px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-primary)' }}>
+              <TrendingUp className="h-4 w-4 text-[var(--secondary)]" />
               Live Rate Chart (Past 24h)
             </h4>
-            <span className="text-3xs text-zinc-500 font-semibold uppercase tracking-wider">
+            <span style={{ fontSize: '10px', background: 'var(--secondary-soft)', color: 'var(--secondary)', padding: '2px 8px', borderRadius: '12px', fontWeight: 700 }}>
               Pair: {fromCurrency}/{toCurrency}
             </span>
           </div>
 
-          {/* Sparkline container */}
-          <div className="h-24 bg-zinc-950/40 rounded-lg border border-zinc-900 flex items-center justify-center p-2 relative my-2 overflow-hidden">
-            <div className="absolute top-1 right-2 text-[8px] text-zinc-600 font-mono">
-              Max: {history.length > 0 ? Math.max(...history.map(h => h.rate)).toFixed(4) : '0.00'}
+          {/* Sparkline chart with background lines and pulsing dot */}
+          <div style={{
+            height: '116px',
+            background: 'var(--bg-main)',
+            borderRadius: '12px',
+            border: '1px solid var(--border)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '12px',
+            position: 'relative',
+            overflow: 'hidden'
+          }}>
+            {/* Gridlines */}
+            <div style={{ position: 'absolute', left: 0, right: 0, top: '25%', height: 0, borderTop: '1px dashed rgba(0,0,0,0.04)' }} />
+            <div style={{ position: 'absolute', left: 0, right: 0, top: '50%', height: 0, borderTop: '1px dashed rgba(0,0,0,0.04)' }} />
+            <div style={{ position: 'absolute', left: 0, right: 0, top: '75%', height: 0, borderTop: '1px dashed rgba(0,0,0,0.04)' }} />
+
+            <div style={{ position: 'absolute', top: '8px', right: '12px', fontSize: '9px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+              Max: {history.length > 0 ? Math.max(...history.map(h => h.rate)).toFixed(4) : '0.0000'}
             </div>
-            <div className="absolute bottom-1 right-2 text-[8px] text-zinc-600 font-mono">
-              Min: {history.length > 0 ? Math.min(...history.map(h => h.rate)).toFixed(4) : '0.00'}
+            <div style={{ position: 'absolute', bottom: '8px', right: '12px', fontSize: '9px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+              Min: {history.length > 0 ? Math.min(...history.map(h => h.rate)).toFixed(4) : '0.0000'}
             </div>
 
             {history && history.length > 0 ? (
               <svg className="w-full h-full overflow-visible" viewBox="0 0 360 80" preserveAspectRatio="none">
                 <defs>
                   <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#10b981" stopOpacity="0.2"/>
-                    <stop offset="100%" stopColor="#10b981" stopOpacity="0.0"/>
+                    <stop offset="0%" stopColor="var(--secondary)" stopOpacity="0.25"/>
+                    <stop offset="100%" stopColor="var(--secondary)" stopOpacity="0.0"/>
                   </linearGradient>
                 </defs>
                 {/* Area path */}
@@ -232,19 +275,43 @@ export default function FXRateCard() {
                 {/* Line path */}
                 <polyline
                   fill="none"
-                  stroke="#10b981"
-                  strokeWidth="2"
+                  stroke="var(--secondary)"
+                  strokeWidth="2.5"
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   points={renderSparkline()}
                 />
+                
+                {/* Pulsing indicator dot at current value */}
+                {(() => {
+                  if (!history || history.length === 0) return null;
+                  const rates = history.map(h => h.rate);
+                  const min = Math.min(...rates);
+                  const max = Math.max(...rates);
+                  const range = max - min === 0 ? 1 : max - min;
+
+                  const width = 360;
+                  const height = 80;
+                  const padding = 5;
+
+                  const idx = history.length - 1;
+                  const val = history[idx];
+                  const cx = padding + (idx / (history.length - 1)) * (width - 2 * padding);
+                  const cy = height - padding - ((val.rate - min) / range) * (height - 2 * padding);
+                  return (
+                    <g>
+                      <circle cx={cx} cy={cy} r="4" fill="var(--secondary)" />
+                      <circle cx={cx} cy={cy} r="8" fill="var(--secondary)" opacity="0.3" className="animate-ping" style={{ transformOrigin: `${cx}px ${cy}px` }} />
+                    </g>
+                  );
+                })()}
               </svg>
             ) : (
-              <span className="text-xs text-zinc-500">No chart data available</span>
+              <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>No chart data available</span>
             )}
           </div>
 
-          <div className="flex items-center justify-between text-3xs text-zinc-500 font-mono">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '9px', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', padding: '0 4px' }}>
             <span>24 hours ago</span>
             <span>Current Quote</span>
           </div>
@@ -253,30 +320,31 @@ export default function FXRateCard() {
 
       {/* On-chain Swap Settlement Block */}
       {isSwapSupported && (
-        <div className="bg-zinc-900/30 border border-zinc-800 p-4 rounded-xl flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <h5 className="text-xs font-bold text-white flex items-center gap-1.5">
-              <Coins className="h-4 w-4 text-emerald-400" />
+        <div className="bg-[var(--bg-elevated)] border border-[var(--border)] p-5 rounded-2xl flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm" style={{ borderLeft: '4px solid var(--success)' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            <h5 style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <Coins className="h-4 w-4 text-[var(--success)]" />
               On-Chain FX Swap Settlement (USDC ↔ EURC)
             </h5>
-            <p className="text-[11px] text-zinc-400 max-w-xl">
+            <p style={{ fontSize: '11px', color: 'var(--text-secondary)', lineHeight: '1.4', maxWidth: '600px' }}>
               Takers can swap USDC and EURC with locked-rate guarantees utilizing Circle StableFX. Settlement utilizes Permit2 for Payment-versus-Payment guarantees on Arc Testnet.
             </p>
           </div>
 
-          <div className="flex flex-col items-stretch md:items-end gap-2 shrink-0">
+          <div style={{ flexShrink: 0 }}>
             <button
               onClick={handleSwap}
               disabled={swapping || !quote}
-              className="px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-black font-bold text-xs rounded-lg shadow-md hover:shadow-emerald-500/10 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
+              className="btn btn-primary"
+              style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '0 24px', height: '42px', fontSize: '13px', fontWeight: 600 }}
             >
               {swapping ? (
                 <>
-                  <RefreshCw className="h-3.5 w-3.5 animate-spin" /> Swapping...
+                  <RefreshCw className="h-4 w-4 animate-spin" /> Swapping...
                 </>
               ) : (
                 <>
-                  <ArrowRightLeft className="h-3.5 w-3.5" /> Execute swap
+                  <ArrowRightLeft className="h-4 w-4" /> Execute Swap
                 </>
               )}
             </button>
@@ -286,35 +354,43 @@ export default function FXRateCard() {
 
       {/* Success Trade Log Details */}
       {swapResult && (
-        <div className="p-3 bg-emerald-500/5 border border-emerald-500/10 rounded-xl space-y-2">
-          <div className="flex items-center gap-2 text-emerald-400">
-            <CheckCircle2 className="h-4 w-4" />
-            <span className="text-xs font-bold">StableFX Trade Settled!</span>
+        <div style={{
+          background: 'var(--success-soft)',
+          border: '1px solid var(--success-border)',
+          borderRadius: '16px',
+          padding: '16px',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '12px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--success)', fontWeight: 700, fontSize: '13px' }}>
+            <CheckCircle2 className="h-4.5 w-4.5" />
+            <span>StableFX Trade Settled!</span>
           </div>
-          <div className="grid grid-cols-2 gap-4 text-3xs text-zinc-400 font-mono">
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px', fontSize: '10px', color: 'var(--text-secondary)', fontFamily: 'var(--font-mono)' }}>
             <div>
-              <span className="text-zinc-500 block">Trade Reference ID</span>
-              <span>{swapResult.id}</span>
+              <span style={{ color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Trade Reference ID</span>
+              <span style={{ fontWeight: 600 }}>{swapResult.id}</span>
             </div>
             <div>
-              <span className="text-zinc-500 block">Quote ID</span>
-              <span>{swapResult.quoteId}</span>
+              <span style={{ color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Quote ID</span>
+              <span style={{ fontWeight: 600 }}>{swapResult.quoteId}</span>
             </div>
             <div>
-              <span className="text-zinc-500 block">Exchanged Amount</span>
-              <span className="text-zinc-200 font-bold">
+              <span style={{ color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Exchanged Amount</span>
+              <span style={{ color: 'var(--text-primary)', fontWeight: 700 }}>
                 {parseFloat(swapResult.fromAmount).toFixed(2)} {swapResult.fromCurrency} ➔ {parseFloat(swapResult.toAmount).toFixed(2)} {swapResult.toCurrency}
               </span>
             </div>
             <div>
-              <span className="text-zinc-500 block">Transaction Hash</span>
+              <span style={{ color: 'var(--text-muted)', display: 'block', marginBottom: '2px' }}>Transaction Hash</span>
               <a 
                 href={`https://testnet.arcscan.app/tx/${swapResult.txHash}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-emerald-400 hover:underline"
+                style={{ color: 'var(--success)', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '2px' }}
               >
-                {swapResult.txHash.substring(0, 24)}...
+                {swapResult.txHash.substring(0, 16)}...
               </a>
             </div>
           </div>

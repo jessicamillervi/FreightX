@@ -32,7 +32,7 @@ import FXRateCard from '../FXRateCard';
 
 export default function AdvancedTab() {
   const { appMode, showToast, logTerminal, contracts } = useAppContext();
-  const { wallet, signerType, connectedAddress, browserWalletClient } = useWallet();
+  const { wallet, signerType, connectedAddress, browserWalletClient, circleSession } = useWallet();
   const { shipments, setShipments, selectedShipmentId, loading, setLoading, refreshShipmentsList } = useShipments();
 
   // Local Advanced Tab States
@@ -44,76 +44,73 @@ export default function AdvancedTab() {
 
   if (selectedShipmentId === null || !currentShipment) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
         <div>
-          <h2 style={{ fontSize: '1.3rem' }}>Advanced Trade Expansion Engine</h2>
-          <p style={{ fontSize: '0.8rem' }}>Explore three corporate expansion modules: Secp256k1 IoT Sensor Gateway, USYC Treasury Sweeps, and Circle CCTP Cross-Chain liquidity rails.</p>
+          <h2 className="section-title">Capital Marketplace</h2>
+          <p className="section-subtitle">IoT Sensor Gateway, USYC Treasury Sweeps, CCTP Cross-Chain funding, Nanopayments, and AI Agent.</p>
         </div>
 
-        <div className="glass-panel" style={{ borderLeft: '3px solid var(--primary)' }}>
-          <h3 style={{ fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+        <div className="glass-panel feature-card feature-card--primary">
+          <h3 className="feature-card__title">
             <Activity size={18} style={{ color: 'var(--primary)' }} /> Cryptographic Hardware IoT Sensor Gateway
           </h3>
-          <p style={{ fontSize: '0.8rem', marginBottom: '1.25rem' }}>
+          <p className="feature-card__desc">
             Bind a hardware IoT device wallet address to the cargo container. Periodic telemetry reports are cryptographically signed by the device&apos;s hardware enclave key (ECDSA). The smart contract performs standard <code>ecrecover</code> validation to verify authentic telemetry, neutralizing spoofing risks.
           </p>
-          <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: '8px', padding: '1.5rem', textAlign: 'center', border: '1px dashed var(--border-color)' }}>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Please select a cargo shipment from the registry to interface with the hardware sensor emulator.</p>
+          <div className="feature-card__placeholder"><p>Please select a cargo shipment from the registry to interface with the hardware sensor emulator.</p>
           </div>
         </div>
 
-        <div className="glass-panel" style={{ borderLeft: '3px solid var(--success)' }}>
-          <h3 style={{ fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+        <div className="glass-panel feature-card feature-card--success">
+          <h3 className="feature-card__title">
             <TrendingUp size={18} style={{ color: 'var(--success)' }} /> USYC Automated Yield Sweep Vault (ERC-4626)
           </h3>
-          <p style={{ fontSize: '0.8rem', marginBottom: '1.25rem' }}>
+          <p className="feature-card__desc">
             Sweeps idle escrow collateral into institutional-grade USYC US Treasury Bills to capture a stable 5% APY yield. Accrued yield builds automatically during shipment transit and is returned to the buyer upon successful cargo receipt.
           </p>
-          <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: '8px', padding: '1.5rem', textAlign: 'center', border: '1px dashed var(--border-color)' }}>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Please select a cargo shipment from the registry to sweep collateral into the Treasury Yield Vault.</p>
+          <div className="feature-card__placeholder"><p>Please select a cargo shipment from the registry to sweep collateral into the Treasury Yield Vault.</p>
           </div>
         </div>
 
-        <div className="glass-panel" style={{ borderLeft: '3px solid var(--secondary)' }}>
-          <h3 style={{ fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+        <div className="glass-panel feature-card feature-card--secondary">
+          <h3 className="feature-card__title">
             <Send size={18} style={{ color: 'var(--secondary)' }} /> Cross-Chain Escrow Funding (Circle CCTP)
           </h3>
-          <p style={{ fontSize: '0.8rem', marginBottom: '1.25rem' }}>
+          <p className="feature-card__desc">
             Sponsors, importers, and lenders on public EVM networks (Arbitrum, Avalanche, Mainnet) can instantly fund FreightX escrows using Circle&apos;s Cross-Chain Transfer Protocol (CCTP). CCTP burns origin-chain USDC and mints native gas-stable USDC on Arc with 1:1 parity and sub-second finality.
           </p>
-          <div style={{ background: 'rgba(255,255,255,0.02)', borderRadius: '8px', padding: '1.5rem', textAlign: 'center', border: '1px dashed var(--border-color)' }}>
-            <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>Please select a cargo shipment from the registry to simulate CCTP cross-chain funding.</p>
+          <div className="feature-card__placeholder"><p>Please select a cargo shipment from the registry to simulate CCTP cross-chain funding.</p>
           </div>
         </div>
 
         {/* Feature 4: Circle Gateway Nanopayments (x402) */}
-        <div className="glass-panel" style={{ borderLeft: '3px solid var(--success)' }}>
-          <h3 style={{ fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+        <div className="glass-panel feature-card feature-card--success">
+          <h3 className="feature-card__title">
             <DollarSign size={18} style={{ color: 'var(--success)' }} /> Gated Telemetry Nanopayments (Circle Gateway & x402)
           </h3>
-          <p style={{ fontSize: '0.8rem', marginBottom: '1rem' }}>
+          <p className="feature-card__desc">
             Monetize high-frequency IoT cargo data using the HTTP 402 Payment Required standard. External audit, insurance, and logistics clients pay $0.001 per single telemetry query or $0.01 per shipment history. Settled gas-free using EIP-3009 authorizations.
           </p>
           <NanopayRevenue shipmentId={null} />
         </div>
 
         {/* Feature 5: AI Agent Logistics Coordinator */}
-        <div className="glass-panel" style={{ borderLeft: '3px solid var(--primary)' }}>
-          <h3 style={{ fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+        <div className="glass-panel feature-card feature-card--primary">
+          <h3 className="feature-card__title">
             <Bot size={18} style={{ color: 'var(--primary)' }} /> AI Agent Logistics Coordinator (ERC-8004 & ERC-8183)
           </h3>
-          <p style={{ fontSize: '0.8rem', marginBottom: '1rem' }}>
+          <p className="feature-card__desc">
             Autonomous coordinator managing logistics milestones, cold-chain temperature compliance, and settlements on Arc Chain.
           </p>
           <AgentDashboard />
         </div>
 
         {/* Feature 6: StableFX Real Currency Swap */}
-        <div className="glass-panel" style={{ borderLeft: '3px solid var(--secondary)' }}>
-          <h3 style={{ fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+        <div className="glass-panel feature-card feature-card--secondary">
+          <h3 className="feature-card__title">
             <TrendingUp size={18} style={{ color: 'var(--secondary)' }} /> StableFX Real-Time Currency Converter & Swap
           </h3>
-          <p style={{ fontSize: '0.8rem', marginBottom: '1rem' }}>
+          <p className="feature-card__desc">
             Get live FX quotes and execute stablecoin conversions (USDC ↔ EURC) on-chain utilizing Circle StableFX.
           </p>
           <FXRateCard />
@@ -125,24 +122,24 @@ export default function AdvancedTab() {
   const tokenSymbol = currentShipment.token === EURC_ADDRESS ? 'EURC' : 'USDC';
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       <div>
-        <h2 style={{ fontSize: '1.3rem' }}>Advanced Trade Expansion Engine</h2>
-        <p style={{ fontSize: '0.8rem' }}>Explore three corporate expansion modules: Secp256k1 IoT Sensor Gateway, USYC Treasury Sweeps, and Circle CCTP Cross-Chain liquidity rails.</p>
+        <h2 className="section-title">Capital Marketplace</h2>
+        <p className="section-subtitle">IoT Sensor Gateway, USYC Treasury Sweeps, CCTP Cross-Chain funding, Nanopayments, and AI Agent.</p>
       </div>
 
       {/* Feature 1: IoT Device Gateway */}
-      <div className="glass-panel" style={{ borderLeft: '3px solid var(--primary)' }}>
-        <h3 style={{ fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+      <div className="glass-panel feature-card feature-card--primary">
+        <h3 className="feature-card__title">
           <Activity size={18} style={{ color: 'var(--primary)' }} /> Cryptographic Hardware IoT Sensor Gateway
         </h3>
-        <p style={{ fontSize: '0.8rem', marginBottom: '1.25rem' }}>
+        <p className="feature-card__desc">
           Bind a hardware IoT device wallet address to the cargo container. Periodic telemetry reports are cryptographically signed by the device&apos;s hardware enclave key (ECDSA). The smart contract performs standard <code>ecrecover</code> validation to verify authentic telemetry, neutralizing spoofing risks.
         </p>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
-          <div style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '1rem' }}>
-            <h4 style={{ fontSize: '0.85rem', marginBottom: '0.75rem', color: 'var(--primary)' }}>Register IoT Telemetry Device</h4>
+        <div className="feature-card__grid">
+          <div className="feature-card__inner">
+            <h4 className="feature-card__inner-title" style={{ color: 'var(--primary)' }}>Register IoT Telemetry Device</h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Cargo #{selectedShipmentId} — Status: {
                 currentShipment.status === 'Created' ? 'Escrow Secured' :
@@ -173,7 +170,9 @@ export default function AdvancedTab() {
                     logTerminal(`Bound device telemetry listener (Local): ${gateway}`);
                   } else if (contracts) {
                     try {
-                      const signer = (signerType === 'web3' && browserWalletClient ? browserWalletClient : wallet.privateKey) as string | WalletClient;
+                      const signer = (signerType === 'web3' && browserWalletClient ? browserWalletClient :
+                                     signerType === 'circle' && circleSession ? circleSession :
+                                     wallet.privateKey) as any;
                       await setIotGatewayOnchain(signer, contracts, selectedShipmentId, gateway, (s) => { logTerminal(s); });
                       showToast('IoT hardware signature successfully registered on-chain!', 'success');
                       await refreshShipmentsList('live', contracts, wallet);
@@ -187,13 +186,13 @@ export default function AdvancedTab() {
             </div>
           </div>
 
-          <div style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '1rem' }}>
-            <h4 style={{ fontSize: '0.85rem', marginBottom: '0.75rem', color: 'var(--secondary)' }}>Live Sensor Telemetry Metrics</h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', fontSize: '0.8rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--text-secondary)' }}>Core Ambient Temp:</span><strong style={{ color: currentShipment.temperature > 8 ? 'var(--danger)' : 'var(--success)' }}>{currentShipment.temperature}°C</strong></div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--text-secondary)' }}>Relative Humidity:</span><strong>{currentShipment.humidity || 0}%</strong></div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--text-secondary)' }}>Thermal Breach Alarms:</span><strong style={{ color: (currentShipment.temperatureViolations || 0) > 0 ? 'var(--danger)' : 'var(--success)' }}>{currentShipment.temperatureViolations || 0} times</strong></div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--text-secondary)' }}>Signature Algorithm:</span><span className="badge badge-primary" style={{ fontSize: '0.65rem' }}>ECDSA secp256k1</span></div>
+          <div className="feature-card__inner">
+            <h4 className="feature-card__inner-title" style={{ color: 'var(--secondary)' }}>Live Sensor Telemetry Metrics</h4>
+            <div className="feature-card__metrics">
+              <div className="feature-card__metric-row"><span style={{ color: 'var(--text-secondary)' }}>Core Ambient Temp:</span><strong style={{ color: currentShipment.temperature > 8 ? 'var(--danger)' : 'var(--success)' }}>{currentShipment.temperature}°C</strong></div>
+              <div className="feature-card__metric-row"><span style={{ color: 'var(--text-secondary)' }}>Relative Humidity:</span><strong>{currentShipment.humidity || 0}%</strong></div>
+              <div className="feature-card__metric-row"><span style={{ color: 'var(--text-secondary)' }}>Thermal Breach Alarms:</span><strong style={{ color: (currentShipment.temperatureViolations || 0) > 0 ? 'var(--danger)' : 'var(--success)' }}>{currentShipment.temperatureViolations || 0} times</strong></div>
+              <div className="feature-card__metric-row"><span style={{ color: 'var(--text-secondary)' }}>Signature Algorithm:</span><span className="badge badge-primary" style={{ fontSize: '0.65rem' }}>ECDSA secp256k1</span></div>
             </div>
           </div>
         </div>
@@ -335,15 +334,17 @@ export default function AdvancedTab() {
                     try {
                       // 1. Sign payload
                       let signature = '';
-                      if (signerType === 'web3') {
-                        if (!browserWalletClient || !connectedAddress) {
-                          showToast('Web3 browser wallet not connected.', 'error');
+                      if (signerType === 'web3' || signerType === 'circle') {
+                        const activeClient = signerType === 'web3' ? browserWalletClient : circleSession;
+                        const activeAddr = signerType === 'web3' ? connectedAddress : circleSession?.address;
+                        if (!activeClient || !activeAddr) {
+                          showToast('Active wallet not connected.', 'error');
                           setLoading(false);
                           return;
                         }
                         signature = await signIoTPayloadWithWalletClient(
-                          browserWalletClient as WalletClient,
-                          connectedAddress,
+                          activeClient as any,
+                          activeAddr,
                           selectedShipmentId,
                           iotMilestone,
                           temp,
@@ -364,7 +365,9 @@ export default function AdvancedTab() {
                       logTerminal(`ECDSA cryptographically signed proof: ${signature.slice(0, 30)}...`);
                       logTerminal(`Transmitting verified proof packet to on-chain token contracts...`);
 
-                      const txSigner = (signerType === 'web3' && browserWalletClient ? browserWalletClient : wallet.privateKey) as string | WalletClient;
+                      const txSigner = (signerType === 'web3' && browserWalletClient ? browserWalletClient :
+                                        signerType === 'circle' && circleSession ? circleSession :
+                                        wallet.privateKey) as any;
                       const txHash = await triggerMilestoneWithIoTSignatureOnchain(
                         txSigner,
                         contracts,
@@ -398,17 +401,17 @@ export default function AdvancedTab() {
       </div>
 
       {/* Feature 2: USYC Yield Vault */}
-      <div className="glass-panel" style={{ borderLeft: '3px solid var(--success)' }}>
-        <h3 style={{ fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+      <div className="glass-panel feature-card feature-card--success">
+        <h3 className="feature-card__title">
           <TrendingUp size={18} style={{ color: 'var(--success)' }} /> USYC Automated Yield Sweep Vault (ERC-4626)
         </h3>
-        <p style={{ fontSize: '0.8rem', marginBottom: '1.25rem' }}>
+        <p className="feature-card__desc">
           Sweeps idle escrow collateral into institutional-grade USYC US Treasury Bills to capture a stable 5% APY yield. Accrued yield builds automatically during shipment transit and is returned to the buyer upon successful cargo receipt.
         </p>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
-          <div style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '1rem' }}>
-            <h4 style={{ fontSize: '0.85rem', marginBottom: '0.75rem', color: 'var(--success)' }}>Yield Sweep Controls</h4>
+        <div className="feature-card__grid">
+          <div className="feature-card__inner">
+            <h4 className="feature-card__inner-title" style={{ color: 'var(--success)' }}>Yield Sweep Controls</h4>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               <div style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Active Escrow Balance: {(currentShipment.cargoValue + currentShipment.shippingFee - currentShipment.releasedSupplierAmount).toLocaleString()} {tokenSymbol}</div>
               <div style={{ fontSize: '0.7rem', color: currentShipment.usycWrapped ? 'var(--success)' : 'var(--text-muted)' }}>Yield Sweep Status: {currentShipment.usycWrapped ? '✓ Active Yielding' : '✗ Inactive'}</div>
@@ -427,7 +430,9 @@ export default function AdvancedTab() {
                     logTerminal(`USYC Yield Sweep (Local): Successfully deposited collateral ${currentShipment.cargoValue + currentShipment.shippingFee}`);
                   } else if (contracts) {
                     try {
-                      const signer = (signerType === 'web3' && browserWalletClient ? browserWalletClient : wallet.privateKey) as string | WalletClient;
+                      const signer = (signerType === 'web3' && browserWalletClient ? browserWalletClient :
+                                                     signerType === 'circle' && circleSession ? circleSession :
+                                                     wallet.privateKey) as any;
                       await wrapEscrowInUSYCOnchain(signer, contracts, selectedShipmentId, (s) => { logTerminal(s); });
                       showToast('Collateral successfully swept into USYC Yield Vault on-chain!', 'success');
                       await refreshShipmentsList('live', contracts, wallet);
@@ -456,7 +461,9 @@ export default function AdvancedTab() {
                     logTerminal(`Yield Sweep Redemption (Local): Principal released, yield realized = ${yieldAmt}`);
                   } else if (contracts) {
                     try {
-                      const signer = (signerType === 'web3' && browserWalletClient ? browserWalletClient : wallet.privateKey) as string | WalletClient;
+                      const signer = (signerType === 'web3' && browserWalletClient ? browserWalletClient :
+                                                     signerType === 'circle' && circleSession ? circleSession :
+                                                     wallet.privateKey) as any;
                       await redeemUSYCOnchain(signer, contracts, selectedShipmentId, (s) => { logTerminal(s); });
                       showToast('Successfully redeemed yield-bearing shares on-chain!', 'success');
                       await refreshShipmentsList('live', contracts, wallet);
@@ -469,25 +476,25 @@ export default function AdvancedTab() {
               </button>
             </div>
           </div>
-          <div style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', borderRadius: '12px', padding: '1rem' }}>
-            <h4 style={{ fontSize: '0.85rem', marginBottom: '0.75rem', color: 'var(--success)' }}>Treasury Yield Analytics</h4>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', fontSize: '0.8rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--text-secondary)' }}>Expected Treasury APY:</span><strong style={{ color: 'var(--success)' }}>5.00% APY</strong></div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--text-secondary)' }}>Yield Fund Shares:</span><strong>{currentShipment.usycShares || 0} shares</strong></div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--text-secondary)' }}>Net Yield Accrued:</span><strong style={{ color: 'var(--success)' }}>{currentShipment.yieldEarned || 0} {tokenSymbol}</strong></div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--text-secondary)' }}>Underlying Fund:</span><span className="badge badge-success" style={{ fontSize: '0.65rem' }}>Hashnote USYC</span></div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--text-secondary)' }}>ERC Standard Specification:</span><span className="badge badge-muted" style={{ fontSize: '0.65rem' }}>ERC-4626</span></div>
+          <div className="feature-card__inner">
+            <h4 className="feature-card__inner-title" style={{ color: 'var(--success)' }}>Treasury Yield Analytics</h4>
+            <div className="feature-card__metrics">
+              <div className="feature-card__metric-row"><span style={{ color: 'var(--text-secondary)' }}>Expected Treasury APY:</span><strong style={{ color: 'var(--success)' }}>5.00% APY</strong></div>
+              <div className="feature-card__metric-row"><span style={{ color: 'var(--text-secondary)' }}>Yield Fund Shares:</span><strong>{currentShipment.usycShares || 0} shares</strong></div>
+              <div className="feature-card__metric-row"><span style={{ color: 'var(--text-secondary)' }}>Net Yield Accrued:</span><strong style={{ color: 'var(--success)' }}>{currentShipment.yieldEarned || 0} {tokenSymbol}</strong></div>
+              <div className="feature-card__metric-row"><span style={{ color: 'var(--text-secondary)' }}>Underlying Fund:</span><span className="badge badge-success" style={{ fontSize: '0.65rem' }}>Hashnote USYC</span></div>
+              <div className="feature-card__metric-row"><span style={{ color: 'var(--text-secondary)' }}>ERC Standard Specification:</span><span className="badge badge-muted" style={{ fontSize: '0.65rem' }}>ERC-4626</span></div>
             </div>
           </div>
         </div>
       </div>
 
       {/* Feature 3: CCTP Cross-Chain Bridge */}
-      <div className="glass-panel" style={{ borderLeft: '3px solid var(--secondary)' }}>
-        <h3 style={{ fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+      <div className="glass-panel feature-card feature-card--secondary">
+        <h3 className="feature-card__title">
           <Send size={18} style={{ color: 'var(--secondary)' }} /> Cross-Chain Escrow Funding (Circle CCTP)
         </h3>
-        <p style={{ fontSize: '0.8rem', marginBottom: '1.25rem' }}>
+        <p className="feature-card__desc">
           Sponsors, importers, and lenders on public EVM networks (Arbitrum, Avalanche, Mainnet) can instantly fund FreightX escrows using Circle&apos;s Cross-Chain Transfer Protocol (CCTP). CCTP burns origin-chain USDC and mints native gas-stable USDC on Arc with 1:1 parity and sub-second finality.
         </p>
 
@@ -506,11 +513,11 @@ export default function AdvancedTab() {
               <strong style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>Shipment Escrow Fully Funded</strong>
             </div>
             <div style={{ fontSize: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <div className="feature-card__metric-row">
                 <span style={{ color: 'var(--text-secondary)' }}>Source Chain Domain:</span>
                 <strong>{currentShipment.cctpSourceDomain === 0 ? 'Ethereum Sepolia (Domain 0)' : currentShipment.cctpSourceDomain === 3 ? 'Arbitrum Sepolia (Domain 3)' : `Domain ${currentShipment.cctpSourceDomain}`}</strong>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <div className="feature-card__metric-row">
                 <span style={{ color: 'var(--text-secondary)' }}>Source Burn Tx Hash:</span>
                 <a
                   href={`https://${currentShipment.cctpSourceDomain === 0 ? 'sepolia.etherscan.io' : 'sepolia.arbiscan.io'}/tx/${currentShipment.cctpSourceTxHash}`}
@@ -542,33 +549,33 @@ export default function AdvancedTab() {
       </div>
 
       {/* Feature 4: Circle Gateway Nanopayments (x402) */}
-      <div className="glass-panel" style={{ borderLeft: '3px solid var(--success)' }}>
-        <h3 style={{ fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+      <div className="glass-panel feature-card feature-card--success">
+        <h3 className="feature-card__title">
           <DollarSign size={18} style={{ color: 'var(--success)' }} /> Gated Telemetry Nanopayments (Circle Gateway & x402)
         </h3>
-        <p style={{ fontSize: '0.8rem', marginBottom: '1rem' }}>
+        <p className="feature-card__desc">
           Monetize high-frequency IoT cargo data using the HTTP 402 Payment Required standard. External audit, insurance, and logistics clients pay $0.001 per single telemetry query or $0.01 per shipment history. Settled gas-free using EIP-3009 authorizations.
         </p>
         <NanopayRevenue shipmentId={selectedShipmentId} />
       </div>
 
       {/* Feature 5: AI Agent Logistics Coordinator */}
-      <div className="glass-panel" style={{ borderLeft: '3px solid var(--primary)' }}>
-        <h3 style={{ fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+      <div className="glass-panel feature-card feature-card--primary">
+        <h3 className="feature-card__title">
           <Bot size={18} style={{ color: 'var(--primary)' }} /> AI Agent Logistics Coordinator (ERC-8004 & ERC-8183)
         </h3>
-        <p style={{ fontSize: '0.8rem', marginBottom: '1rem' }}>
+        <p className="feature-card__desc">
           Autonomous coordinator managing logistics milestones, cold-chain temperature compliance, and settlements on Arc Chain.
         </p>
         <AgentDashboard />
       </div>
 
       {/* Feature 6: StableFX Real Currency Swap */}
-      <div className="glass-panel" style={{ borderLeft: '3px solid var(--secondary)' }}>
-        <h3 style={{ fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
+      <div className="glass-panel feature-card feature-card--secondary">
+        <h3 className="feature-card__title">
           <TrendingUp size={18} style={{ color: 'var(--secondary)' }} /> StableFX Real-Time Currency Converter & Swap
         </h3>
-        <p style={{ fontSize: '0.8rem', marginBottom: '1rem' }}>
+        <p className="feature-card__desc">
           Get live FX quotes and execute stablecoin conversions (USDC ↔ EURC) on-chain utilizing Circle StableFX.
         </p>
         <FXRateCard />

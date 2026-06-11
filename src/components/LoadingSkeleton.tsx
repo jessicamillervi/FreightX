@@ -1,89 +1,57 @@
 'use client';
 
-import { Anchor } from 'lucide-react';
+import React from 'react';
 
 export function LoadingSkeleton() {
   return (
-    <div style={{
-      minHeight: '100vh',
+    <div style={{ 
+      minHeight: '100vh', 
+      background: '#0B0D10',
       display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: '2rem',
-      padding: '2rem',
-      background: 'var(--bg-main)'
+      flexDirection: 'column'
     }}>
-      {/* Animated logo */}
+      {/* Header skeleton */}
       <div style={{
-        position: 'relative',
-        width: '80px',
-        height: '80px',
+        height: '56px',
+        borderBottom: '1px solid rgba(255,255,255,0.06)',
         display: 'flex',
         alignItems: 'center',
-        justifyContent: 'center'
+        padding: '0 48px'
       }}>
-        <div style={{
-          position: 'absolute',
-          inset: 0,
-          borderRadius: '50%',
-          border: '3px solid rgba(0, 136, 255, 0.1)',
-          borderTopColor: 'var(--primary)',
-          animation: 'spin-slow 1.5s linear infinite'
-        }} />
-        <Anchor size={28} style={{ color: 'var(--primary)' }} />
+        <div className="skeleton" style={{ width: '120px', height: '24px' }} />
+        <div style={{ flex: 1 }} />
+        <div className="skeleton" style={{ width: '160px', height: '32px', borderRadius: '16px' }} />
       </div>
 
-      {/* Brand */}
-      <div style={{ textAlign: 'center' }}>
-        <h1 style={{
-          fontSize: '1.8rem',
-          fontWeight: 800,
-          background: 'linear-gradient(135deg, #0088ff 0%, #00d2ff 100%)',
-          WebkitBackgroundClip: 'text',
-          WebkitTextFillColor: 'transparent',
-          marginBottom: '0.5rem',
-          letterSpacing: '-0.03em'
-        }}>
-          FreightX
-        </h1>
-        <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-          Initializing sandbox wallet &amp; blockchain connector...
-        </p>
-      </div>
+      {/* Content skeleton */}
+      <div style={{ maxWidth: '1440px', width: '100%', margin: '0 auto', padding: '48px' }}>
+        {/* Timeline */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '48px', padding: '0 32px' }}>
+          {[1,2,3,4,5].map(i => (
+            <div key={i} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+              <div className="skeleton" style={{ width: '40px', height: '40px', borderRadius: '50%' }} />
+              <div className="skeleton" style={{ width: '80px', height: '14px' }} />
+            </div>
+          ))}
+        </div>
 
-      {/* Skeleton cards */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(3, 1fr)',
-        gap: '1rem',
-        width: '100%',
-        maxWidth: '600px'
-      }}>
-        {[1, 2, 3].map(i => (
-          <div key={i} className="skeleton" style={{
-            height: '60px',
-            borderRadius: '12px',
-            opacity: 0.6
-          }} />
-        ))}
-      </div>
+        {/* KPI cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginBottom: '48px' }}>
+          {[1,2,3,4].map(i => (
+            <div key={i} style={{ 
+              background: '#12161B', 
+              border: '1px solid rgba(255,255,255,0.06)', 
+              borderRadius: '10px', 
+              padding: '24px' 
+            }}>
+              <div className="skeleton" style={{ width: '100px', height: '14px', marginBottom: '12px' }} />
+              <div className="skeleton" style={{ width: '80px', height: '36px' }} />
+            </div>
+          ))}
+        </div>
 
-      {/* Progress bar */}
-      <div style={{
-        width: '200px',
-        height: '4px',
-        borderRadius: '2px',
-        background: 'var(--bg-surface-elevated)',
-        overflow: 'hidden'
-      }}>
-        <div style={{
-          width: '60%',
-          height: '100%',
-          borderRadius: '2px',
-          background: 'linear-gradient(90deg, var(--primary) 0%, var(--secondary) 100%)',
-          animation: 'shimmer 1.5s infinite'
-        }} />
+        {/* Table skeleton */}
+        <div className="skeleton" style={{ width: '100%', height: '300px', borderRadius: '10px' }} />
       </div>
     </div>
   );

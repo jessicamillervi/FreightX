@@ -31,7 +31,7 @@ import IoTRealtime from '../IoTRealtime';
  
 export default function IoTTab() {
   const { appMode, showToast, logTerminal, updateBalances, contracts, setActiveTab } = useAppContext();
-  const { wallet, signerType, connectedAddress, browserWalletClient } = useWallet();
+  const { wallet, signerType, connectedAddress, browserWalletClient, circleSession } = useWallet();
   const { shipments, setShipments, selectedShipmentId, loading, setLoading, refreshShipmentsList } = useShipments();
 
   // Local Sensor Simulation States
@@ -159,7 +159,9 @@ export default function IoTTab() {
       // Live on-chain
       if (!contracts || !wallet) return;
       try {
-        const signer = (signerType === 'web3' && browserWalletClient ? browserWalletClient : wallet.privateKey) as string | WalletClient;
+        const signer = (signerType === 'web3' && browserWalletClient ? browserWalletClient :
+                        signerType === 'circle' && circleSession ? circleSession :
+                        wallet.privateKey) as any;
         const hash = await triggerMilestoneOnchain(
           signer,
           contracts,
@@ -177,8 +179,11 @@ export default function IoTTab() {
 
         await updateBalances(wallet.address, 'sandbox');
         if (connectedAddress) await updateBalances(connectedAddress, 'web3');
+        if (circleSession?.address) await updateBalances(circleSession.address, 'circle');
         await refreshShipmentsList('live', contracts, wallet);
       } catch (err) {
+        console.error("=== triggerMilestoneOnchain error inside tab ===");
+        console.error(err);
         const errMsg = err instanceof Error ? err.message : String(err);
         logTerminal(`Milestone failed: ${errMsg}`);
         showToast('Milestone execution failed.', 'error');
@@ -263,7 +268,9 @@ export default function IoTTab() {
         const onchainPenalty = await getDemurragePenaltyOnchain(contracts, selectedShipmentId);
         logTerminal(`Onchain Demurrage Penalty query returned: ${onchainPenalty.penaltyAmount} ${tokenSymbol} (${onchainPenalty.hoursLate} hours late)`);
 
-        const signer = (signerType === 'web3' && browserWalletClient ? browserWalletClient : wallet.privateKey) as string | WalletClient;
+        const signer = (signerType === 'web3' && browserWalletClient ? browserWalletClient :
+                        signerType === 'circle' && circleSession ? circleSession :
+                        wallet.privateKey) as any;
         const hash = await pickupCargoOnchain(
           signer,
           contracts,
@@ -280,6 +287,7 @@ export default function IoTTab() {
         
         await updateBalances(wallet.address, 'sandbox');
         if (connectedAddress) await updateBalances(connectedAddress, 'web3');
+        if (circleSession?.address) await updateBalances(circleSession.address, 'circle');
         await refreshShipmentsList('live', contracts, wallet);
         
         setDemurrageMultiplier(0);
@@ -313,10 +321,21 @@ export default function IoTTab() {
       logTerminal(`Shipment #${shipmentId} receivable offered for ${price} USDC/EURC`);
     } else {
       if (!contracts || !wallet) return;
+      const currentShipment = shipments.find(s => s.id === shipmentId);
+      const activeAddress = signerType === 'web3' && connectedAddress ? connectedAddress :
+                            signerType === 'circle' && circleSession?.address ? circleSession.address :
+                            wallet.address;
+      if (currentShipment && activeAddress.toLowerCase() !== currentShipment.supplier.toLowerCase()) {
+        showToast(`Only Supplier (${currentShipment.supplier.slice(0, 8)}...) can offer factoring!`, 'warning');
+        logTerminal(`[Factoring Error] Active address (${activeAddress.slice(0, 8)}...) is not the Supplier (${currentShipment.supplier.slice(0, 8)}...) for Shipment #${shipmentId}. To test factoring on-chain, please set one of your owned wallets as the Supplier when creating the escrow!`);
+        return;
+      }
       setLoading(true);
       setFactoringProgress('Submitting factoring offer...');
       try {
-        const signer = (signerType === 'web3' && browserWalletClient ? browserWalletClient : wallet.privateKey) as string | WalletClient;
+        const signer = (signerType === 'web3' && browserWalletClient ? browserWalletClient :
+                        signerType === 'circle' && circleSession ? circleSession :
+                        wallet.privateKey) as any;
         await offerShipmentForFactoringOnchain(signer, contracts, shipmentId, price, (status) => {
           setFactoringProgress(status);
           logTerminal(status);
@@ -350,10 +369,21 @@ export default function IoTTab() {
       showToast('Factoring offer cancelled (Local)', 'info');
     } else {
       if (!contracts || !wallet) return;
+      const currentShipment = shipments.find(s => s.id === shipmentId);
+      const activeAddress = signerType === 'web3' && connectedAddress ? connectedAddress :
+                            signerType === 'circle' && circleSession?.address ? circleSession.address :
+                            wallet.address;
+      if (currentShipment && activeAddress.toLowerCase() !== currentShipment.supplier.toLowerCase()) {
+        showToast(`Only Supplier (${currentShipment.supplier.slice(0, 8)}...) can cancel factoring!`, 'warning');
+        logTerminal(`[Factoring Error] Active address (${activeAddress.slice(0, 8)}...) is not the Supplier (${currentShipment.supplier.slice(0, 8)}...) for Shipment #${shipmentId}.`);
+        return;
+      }
       setLoading(true);
       setFactoringProgress('Cancelling factoring offer...');
       try {
-        const signer = (signerType === 'web3' && browserWalletClient ? browserWalletClient : wallet.privateKey) as string | WalletClient;
+        const signer = (signerType === 'web3' && browserWalletClient ? browserWalletClient :
+                        signerType === 'circle' && circleSession ? circleSession :
+                        wallet.privateKey) as any;
         await cancelFactoringOfferOnchain(signer, contracts, shipmentId, (status) => {
           setFactoringProgress(status);
           logTerminal(status);
@@ -372,13 +402,21 @@ export default function IoTTab() {
   };
 
   const handlePurchaseFactoring = async (shipmentId: number, price: number) => {
-    const activeAddr = signerType === 'web3' ? connectedAddress : wallet?.address;
+    const activeAddr = signerType === 'web3' && connectedAddress ? connectedAddress :
+                       signerType === 'circle' && circleSession?.address ? circleSession.address :
+                       wallet?.address;
     if (!activeAddr) {
       showToast('No active wallet account loaded.', 'error');
       return;
     }
 
     if (!currentShipment) return;
+
+    if (activeAddr && currentShipment.supplier && activeAddr.toLowerCase() === currentShipment.supplier.toLowerCase()) {
+      showToast('Supplier cannot purchase own factoring offer!', 'warning');
+      logTerminal(`[Factoring Error] Active address (${activeAddr.slice(0, 8)}...) cannot be the Supplier when purchasing factoring. Please switch to a different wallet (e.g. connected Web3 wallet) to act as Investor!`);
+      return;
+    }
 
     if (appMode === 'local') {
       const updated = shipments.map(s => {
@@ -400,7 +438,9 @@ export default function IoTTab() {
       setLoading(true);
       setFactoringProgress('Purchasing factored receivable...');
       try {
-        const signer = (signerType === 'web3' && browserWalletClient ? browserWalletClient : wallet.privateKey) as string | WalletClient;
+        const signer = (signerType === 'web3' && browserWalletClient ? browserWalletClient :
+                        signerType === 'circle' && circleSession ? circleSession :
+                        wallet.privateKey) as any;
         await purchaseFactoredShipmentOnchain(
           signer, 
           contracts, 
@@ -415,6 +455,7 @@ export default function IoTTab() {
         showToast('Receivable purchased on Arc!', 'success');
         await updateBalances(wallet.address, 'sandbox');
         if (connectedAddress) await updateBalances(connectedAddress, 'web3');
+        if (circleSession?.address) await updateBalances(circleSession.address, 'circle');
         await refreshShipmentsList('live', contracts, wallet);
       } catch (err) {
         const errMsg = err instanceof Error ? err.message : String(err);
@@ -429,19 +470,19 @@ export default function IoTTab() {
 
   if (selectedShipmentId === null) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+        <div className="section-header">
           <div>
-            <h2 style={{ fontSize: '1.3rem' }}>IoT Telematics Sensor Simulator</h2>
-            <p style={{ fontSize: '0.8rem' }}>Simulate GPS coordinates, track cold-chain temperature thresholds, and compute real-time demurrage penalties.</p>
+            <h2 className="section-title">IoT Tracking</h2>
+            <p className="section-subtitle">GPS coordinates, cold-chain temperature, and real-time demurrage penalties.</p>
           </div>
         </div>
 
-        <div className="glass-panel" style={{ textAlign: 'center', padding: '3rem 0', border: '1px dashed var(--border-color)', borderRadius: '12px' }}>
-          <Activity size={36} style={{ color: 'var(--text-muted)', marginBottom: '0.75rem' }} />
-          <h3 style={{ fontSize: '1rem', marginBottom: '0.25rem' }}>No Escrow Selected</h3>
-          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '1.25rem' }}>
-            Please return to the Escrow Shipments tab and click &quot;Track Shipments&quot; on an active escrow.
+        <div style={{ textAlign: 'center', padding: '64px 0' }}>
+          <Activity size={28} style={{ color: 'var(--text-muted)', marginBottom: '12px' }} />
+          <h3 style={{ fontSize: '16px', marginBottom: '8px' }}>No Escrow Selected</h3>
+          <p style={{ fontSize: '14px', color: 'var(--text-muted)', marginBottom: '20px' }}>
+            Select a shipment from Escrow Shipments to begin tracking.
           </p>
           <button onClick={() => setActiveTab('escrows')} className="btn btn-secondary">
             Go to Escrow Shipments
@@ -474,17 +515,17 @@ export default function IoTTab() {
   if (isCompleted) progressPercent = 100;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '32px' }}>
+      <div className="section-header">
         <div>
-          <h2 style={{ fontSize: '1.3rem' }}>IoT Telematics Sensor Simulator</h2>
-          <p style={{ fontSize: '0.8rem' }}>Simulate GPS coordinates, track cold-chain temperature thresholds, and compute real-time demurrage penalties.</p>
+          <h2 className="section-title">IoT Tracking</h2>
+          <p className="section-subtitle">GPS telemetry, cold-chain compliance, and demurrage penalties.</p>
         </div>
-        <span className="badge badge-primary">Active Cargo Escrow: #{selectedShipmentId}</span>
+        <span className="badge badge-primary">Escrow #{selectedShipmentId}</span>
       </div>
 
       {/* Shipment Route Summary */}
-      <div className="glass-panel" style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '1rem' }}>
+      <div className="glass-panel" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '1rem', padding: '1.25rem' }}>
         <div style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', padding: '0.75rem', borderRadius: '8px' }}>
           <span style={{ display: 'block', fontSize: '0.65rem', color: 'var(--text-secondary)' }}>TOTAL SECURED CAPITAL</span>
           <span style={{ fontSize: '0.9rem', fontWeight: 700 }}>{(currentShipment.cargoValue + currentShipment.shippingFee).toLocaleString()} {tokenSymbol}</span>
