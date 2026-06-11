@@ -352,4 +352,13 @@ To run and verify the FreightX application locally:
 * Github Repository Link: https://github.com/jessicamillervi/FreightX
 * Product Demo Video Link: https://drive.google.com/file/d/1J_uZifvlevMb_NN6TY8GSMp5ToM56UYS/view?usp=sharing
 
+Deployed Smart Contract Addresses (Arc Testnet):
+* FreightEscrow (Settlement & Waterfalls): 0xa62d82d5c5b63525dc19b570b5a666e01d1cae1d
+* FreightPassport (Cargo Twin NFT):       0x414c07483092e9111b82870eece22f7fda689e00
+* FreightDocuments (Crypto Bill of Lading): 0x886f808c75e92475ad66db69418a99844db41e1a
+* DisputeArbitration (Multi-Sig Panel):    0xb06da182b5aab2d8f2e3ab3b9a63fc500d12c8da
+* FreightAgent (Automation Wallet/Roles):   0x9ee7234ef354d4c350f7e48350e25bd57826af27
+* FreightOracle (IoT state updates):       0xc5cdd922f3bc30018f1cec3ddbfc324286f866bb
+* USDC Gas/Stable Token:                   0x3600000000000000000000000000000000000000
+
 ================================================================================
