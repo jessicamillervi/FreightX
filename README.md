@@ -10,6 +10,13 @@
 
 ---
 
+## 📄 Hackathon Submission Documents
+
+*   [FreightX Hackathon Submission PDF Document](./FreightX%20Hackathon%20Submission%20PDF%20Document.pdf) - Official Hackathon Submission Document containing detailed architecture, product checklist, and Circle product feedback.
+*   [FreightX Autonomous Trade PDF](./FreightX_Autonomous_Trade.pdf) - High-level deck outlining the system workflows, smart escrow waterfalls, and agentic AI automation mechanisms.
+
+---
+
 ## 🎯 Problem Statement
 
 International shipping and cross-border trade settlement is throttled by:
