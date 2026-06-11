@@ -48,26 +48,126 @@ FreightX replaces legacy trade finance infrastructure with **programmable stable
 
 FreightX uses a robust client-blockchain model built with Next.js 15, Viem, and custom Solidity contracts deployed to Arc Network.
 
-### Component Map
+### Comprehensive System Architecture
+
+```mermaid
+graph TB
+    %% Nodes and Styles
+    classDef client fill:#1e1e2e,stroke:#a6e3a1,stroke-width:2px,color:#cdd6f4;
+    classDef frontend fill:#181825,stroke:#89b4fa,stroke-width:2px,color:#cdd6f4;
+    classDef backend fill:#11111b,stroke:#f38ba8,stroke-width:2px,color:#cdd6f4;
+    classDef blockchain fill:#313244,stroke:#cba6f7,stroke-width:2px,color:#cdd6f4;
+    classDef logic fill:#181825,stroke:#fab387,stroke-width:2px,color:#cdd6f4;
+
+    %% --------------------------------------------------
+    %% 1. CLIENT LAYER
+    %% --------------------------------------------------
+    subgraph ClientLayer ["1. Client & Actor Layer"]
+        Buyer["Buyer (Importer)"]
+        Supplier["Supplier (Exporter)"]
+        Carrier["Carrier (Transporter)"]
+        Investor["Investor (Liquidity Provider)"]
+    end
+    class Buyer,Supplier,Carrier,Investor client;
+
+    %% --------------------------------------------------
+    %% 2. FRONTEND APPLICATION LAYER
+    %% --------------------------------------------------
+    subgraph FrontendLayer ["2. Frontend Application Layer (Next.js)"]
+        DashboardUI["React 19 / Next.js 16 UI
+        (Glassmorphism Dashboard)"]
+        WagmiClient["Web3 Client
+        (Wagmi v2 & Viem v2)"]
+        RainbowKitUI["RainbowKit / App-Kit
+        (Wallet Connection)"]
+        DashboardUI --> WagmiClient
+        DashboardUI --> RainbowKitUI
+    end
+    class DashboardUI,WagmiClient,RainbowKitUI frontend;
+
+    %% Connect Clients to Frontend
+    Buyer --> DashboardUI
+    Supplier --> DashboardUI
+    Carrier --> DashboardUI
+    Investor --> DashboardUI
+
+    %% --------------------------------------------------
+    %% 3. BACKEND & ORACLE SERVICES
+    %% --------------------------------------------------
+    subgraph BackendLayer ["3. Backend & Oracle Services"]
+        APIRoutes["Next.js Server API Routes
+        (/api/shipments, /api/po-loans)"]
+        IPFSProxy["IPFS Proxy Route
+        (/api/ipfs/upload)"]
+        Database["Database Store
+        (Supabase / Memory Fallback)"]
+        IoTStream["Telemetry Stream SSE
+        (/api/iot/stream)"]
+        PaywallAPI["HTTP 402 Paywall API
+        (USDC Nanopayments Gated)"]
+        
+        APIRoutes --> Database
+        IPFSProxy --> Pinata["Pinata (IPFS)"]
+        IoTStream --> Database
+        PaywallAPI --> IoTStream
+    end
+    class APIRoutes,IPFSProxy,Database,IoTStream,PaywallAPI backend;
+
+    %% Connect Frontend to Backend
+    DashboardUI --> APIRoutes
+    DashboardUI --> IPFSProxy
+    DashboardUI --> IoTStream
+
+    %% --------------------------------------------------
+    %% 4. AI AGENT & TELEMETRY AUTOMATION
+    %% --------------------------------------------------
+    subgraph AgentLayer ["4. AI & IoT Automation"]
+        IoTSensors["IoT Cargo Sensors
+        (GPS, Temp, Demurrage)"]
+        AIAgent["AI Agent Coordinator
+        (Autopilot Decision Tree)"]
+        DeveloperWallet["Circle Dev-Controlled Wallet
+        (Oracle System Account)"]
+        
+        IoTSensors -->|Sends logs| Database
+        AIAgent -->|1. Executes Micropayments| PaywallAPI
+        PaywallAPI -->|2. Returns Telemetry| AIAgent
+        AIAgent -->|3. Decides & Triggers Actions| DeveloperWallet
+    end
+    class IoTSensors,AIAgent,DeveloperWallet logic;
+
+    %% --------------------------------------------------
+    %% 5. BLOCKCHAIN LAYER (ARC NETWORK)
+    %% --------------------------------------------------
+    subgraph BlockchainLayer ["5. Smart Contracts (Arc Network)"]
+        USDCToken["USDC Token
+        (Core Gas & Settlement)"]
+        FreightEscrow["FreightEscrow Contract
+        (PO Repayment & Milestone Payouts)"]
+        FreightPassport["FreightPassport NFT
+        (Digital Cargo Twins - ERC721)"]
+        FreightDocuments["FreightDocuments NFT
+        (W3C Verifiable Credentials - ERC721)"]
+        DisputeArbitration["DisputeArbitration
+        (Multi-Sig Dispute Resolution)"]
+        USYCVault["Simulated USYC Vault
+        (Yield sweeping on escrowed funds)"]
+
+        FreightEscrow -->|Settle / Pay| USDCToken
+        FreightEscrow -->|Sweep float| USYCVault
+        FreightEscrow -->|Mint passport| FreightPassport
+        FreightEscrow -->|Mint docs| FreightDocuments
+        DisputeArbitration -->|Overrides payout| FreightEscrow
+    end
+    class USDCToken,FreightEscrow,FreightPassport,FreightDocuments,DisputeArbitration,USYCVault blockchain;
+
+    %% Connect Blockchain to Clients, Backend, & Agent
+    WagmiClient -->|Executes transactions| FreightEscrow
+    DeveloperWallet -->|Triggers milestone payouts| FreightEscrow
+    DeveloperWallet -->|Updates IoT telemetry state| FreightEscrow
+    FreightEscrow -->|Emits events| Database
 ```
-┌──────────────────────────────────────────────────────────────────────────────┐
-│                            FreightX Platform (Frontend)                      │
-├──────────────────────────┬───────────────────────────────────────────────────┤
-│    Next.js 15 App        │     Solidity Smart Contracts (Arc Testnet)        │
-│                          │                                                   │
-│   ┌───────────────┐      │     ┌──────────────────┐    ┌──────────────────┐  │
-│   │ Escrow Manager│──────┼────►│ FreightEscrow.sol│◄──►│FreightPassport.sol│ │
-│   │ IoT Simulator │      │     │  • USDC/EURC Lock│    │  • ERC-721 NFT   │  │
-│   │ PO Financing  │      │     │  • Milestones    │    │  • Cargo History │  │
-│   │ Credit Passport│     │     │  • Demurrage Calc│    │  • Temp Telemetry│  │
-│   │ Crew Payroll  │      │     │  • PO Waterfall  │    │  • Status Updates│  │
-│   │ StableFX Calc │      │     │  • Invoice Factor│    │                  │  │
-│   └───────────────┘      │     └──────────────────┘    └──────────────────┘  │
-├──────────────────────────┴───────────────────────────────────────────────────┤
-│                           Arc Network L1 Blockchain                          │
-│        USDC Native Gas   •   Sub-Second Finality   •   USDC/EURC ERC-20      │
-└──────────────────────────────────────────────────────────────────────────────┘
-```
+
 
 ### End-to-End Workflow Sequence
 
