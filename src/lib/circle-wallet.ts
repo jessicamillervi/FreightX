@@ -27,7 +27,13 @@ export interface CircleWalletSession {
 
 // Check if Circle Modular Wallets are properly configured
 export const isCircleConfigured = (): boolean => {
-  return !!CLIENT_KEY && CLIENT_KEY !== 'mock_client_key_for_testing' && !!CLIENT_URL;
+  if (!CLIENT_KEY || !CLIENT_URL) return false;
+  // Detect placeholder / test keys that will fail against the live Circle API
+  if (CLIENT_KEY === 'mock_client_key_for_testing') return false;
+  if (CLIENT_KEY.startsWith('TEST_CLIENT_KEY')) return false;
+  if (CLIENT_KEY.startsWith('TEST_')) return false;
+  if (CLIENT_KEY.includes('your-')) return false;
+  return true;
 };
 
 // Create browser passkey transport

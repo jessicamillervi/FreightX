@@ -27,62 +27,38 @@ const saveMockRegistry = (registry: Record<string, any>) => {
   }
 };
 
-/**
- * Uploads a file or JSON data to IPFS.
- */
 export async function uploadToIPFS(
   fileOrData: File | Blob | Record<string, any> | string,
   fileName = 'file'
 ): Promise<{ success: boolean; cid: string; ipfsUrl: string; error?: string }> {
   try {
-    const isRealPinata = PINATA_JWT || (PINATA_API_KEY && PINATA_SECRET_KEY);
-
-    if (isRealPinata) {
-      const formData = new FormData();
-      
-      if (fileOrData instanceof File || fileOrData instanceof Blob) {
-        formData.append('file', fileOrData);
-      } else {
-        const content = typeof fileOrData === 'object' ? JSON.stringify(fileOrData) : fileOrData;
-        const blob = new Blob([content], { type: 'application/json' });
-        formData.append('file', blob, fileName);
-      }
-
-      const headers: Record<string, string> = {};
-      if (PINATA_JWT) {
-        headers['Authorization'] = `Bearer ${PINATA_JWT}`;
-      } else {
-        headers['pinata_api_key'] = PINATA_API_KEY;
-        headers['pinata_secret_api_key'] = PINATA_SECRET_KEY;
-      }
-
-      const response = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
-        method: 'POST',
-        headers,
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error(`Pinata error: ${response.statusText}`);
-      }
-
-      const result = await response.json();
-      const cid = result.IpfsHash;
-      return {
-        success: true,
-        cid,
-        ipfsUrl: getIPFSUrl(cid),
-      };
+    const formData = new FormData();
+    if (fileOrData instanceof File || fileOrData instanceof Blob) {
+      formData.append('file', fileOrData);
     } else {
-      // MOCK UPLOAD
-      console.warn('⚠️ Pinata API keys not found. Mocking IPFS upload.');
-      
-      // Generate realistic looking IPFS V0 CID (starts with Qm, 46 characters)
-      const randomHex = Array.from({ length: 32 }, () =>
-        Math.floor(Math.random() * 16).toString(16)
-      ).join('');
-      const cid = `QmMockIPFSHash${randomHex}`.substring(0, 46);
+      const content = typeof fileOrData === 'object' ? JSON.stringify(fileOrData) : String(fileOrData);
+      const blob = new Blob([content], { type: 'application/json' });
+      formData.append('file', blob, fileName);
+    }
 
+    const response = await fetch('/api/ipfs/upload', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Server proxy upload failed: ${response.statusText}`);
+    }
+
+    const result = await response.json();
+    if (!result.success) {
+      throw new Error(result.error || 'Upload failed');
+    }
+
+    const cid = result.cid;
+
+    if (result.mock) {
+      // Generate client-side mock registration if server responded with mock
       let contentStr = '';
       let typeStr = 'application/json';
 
@@ -118,14 +94,13 @@ export async function uploadToIPFS(
       } catch (e) {
         console.error('Failed to sync mock IPFS to API server:', e);
       }
-
-      // Return the mock result
-      return {
-        success: true,
-        cid,
-        ipfsUrl: getIPFSUrl(cid),
-      };
     }
+
+    return {
+      success: true,
+      cid,
+      ipfsUrl: getIPFSUrl(cid),
+    };
   } catch (err) {
     console.error('IPFS upload failed:', err);
     return {

@@ -20,7 +20,7 @@ export async function getAgentWallet(): Promise<AgentWalletState> {
   if (!privateKey) {
     // Standard sandbox fallback
     return {
-      address: '0x9b1C51cEF8bc8757ad757845ef80A390a3b9d194' as Address,
+      address: '0x9b1C51CEF8BC8757Ad757845eF80a390A3b9D194' as Address,
       publicKey: '04620f32997b102213e8b4e7...',
       chain: 'Arc Testnet',
       status: 'Active',

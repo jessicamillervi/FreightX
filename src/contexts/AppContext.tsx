@@ -128,12 +128,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [poLoans, setPoLoans] = useState<POLoanData[]>([
     {
       id: 1,
-      supplier: '0x8d92F677cD6303Cec089B5F319D72aA797da53',
-      buyer: '0x9b1C51cEF8bc8757ad757845ef80A390a3b9d194',
+      supplier: '0x8D92F677cd6303cEc089B5F319D72Aa797Da5300',
+      buyer: '0x9b1C51CEF8BC8757Ad757845eF80a390A3b9D194',
       cargoValue: 1000,
       loanRequested: 800,
       repaymentAmount: 840,
-      investor: '0x1c902E11a58c4bb489b3ab1c51cef8bc8757845e',
+      investor: '0x1C902e11A58c4BB489B3ab1c51CEf8BC8757845E',
       funded: true,
       repaid: false,
       token: USDC_ADDRESS
@@ -296,8 +296,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     logTerminal('Initiating Solidity deployer client on Arc Testnet...');
 
     try {
-      const signer = signerType === 'web3' && browserWalletClient ? browserWalletClient : wallet.privateKey;
-      const c = await deployContractsOnchain(signer, (status) => {
+      const signer = signerType === 'web3' && browserWalletClient ? browserWalletClient :
+                     signerType === 'circle' && circleSession ? circleSession :
+                     wallet.privateKey;
+      const c = await deployContractsOnchain(signer as any, (status) => {
         setDeployStatus(status);
         logTerminal(status);
       });

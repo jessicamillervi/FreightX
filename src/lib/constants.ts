@@ -11,9 +11,9 @@ export const MODE_KEY = 'freightx_mode';
 export const DEFAULT_MOCK_SHIPMENTS: ShipmentData[] = [
   {
     id: 101,
-    buyer: '0x9b1C51cEF8bc8757ad757845ef80A390a3b9d194',
-    supplier: '0x8d92F677cD6303Cec089B5F319D72aA797da53',
-    carrier: '0x1c902E11a58c4bb489b3ab1c51cef8bc8757845e',
+    buyer: '0x9b1C51CEF8BC8757Ad757845eF80a390A3b9D194',
+    supplier: '0x8D92F677cd6303cEc089B5F319D72Aa797Da5300',
+    carrier: '0x1C902e11A58c4BB489B3ab1c51CEf8BC8757845E',
     cargoValue: 12000,
     shippingFee: 1500,
     releasedSupplierAmount: 3600, // 30% released at Singapore
@@ -39,9 +39,9 @@ export const DEFAULT_MOCK_SHIPMENTS: ShipmentData[] = [
   },
   {
     id: 102,
-    buyer: '0x9b1C51cEF8bc8757ad757845ef80A390a3b9d194',
-    supplier: '0x8d92F677cD6303Cec089B5F319D72aA797da53',
-    carrier: '0x1c902E11a58c4bb489b3ab1c51cef8bc8757845e',
+    buyer: '0x9b1C51CEF8BC8757Ad757845eF80a390A3b9D194',
+    supplier: '0x8D92F677cd6303cEc089B5F319D72Aa797Da5300',
+    carrier: '0x1C902e11A58c4BB489B3ab1c51CEf8BC8757845E',
     cargoValue: 8500,
     shippingFee: 950,
     releasedSupplierAmount: 0,

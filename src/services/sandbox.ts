@@ -255,6 +255,127 @@ export function resolveWalletClient(walletSigner: unknown): ViemWalletClient {
   return (typeof walletSigner === 'string' ? getWalletClient(walletSigner) : walletSigner) as unknown as ViemWalletClient;
 }
 
+export async function getSignerAddress(walletSigner: any): Promise<Address> {
+  if (typeof walletSigner === 'string') {
+    return privateKeyToAccount(walletSigner as `0x${string}`).address;
+  }
+  if (walletSigner && typeof walletSigner === 'object') {
+    if ('address' in walletSigner) {
+      return walletSigner.address;
+    }
+    if ('getAddresses' in walletSigner) {
+      const addresses = await walletSigner.getAddresses();
+      return addresses[0];
+    }
+  }
+  throw new Error('Could not resolve signer address');
+}
+
+export async function ensureRolesForSigner(
+  walletSigner: string | WalletClient,
+  roles: ('ORACLE_ROLE' | 'OPERATOR_ROLE')[],
+  publicClient: any,
+  contracts: BlockchainContracts,
+  onProgress?: (status: string) => void
+) {
+  try {
+    const signerAddress = await getSignerAddress(walletSigner);
+    
+    // Check if the signer already has all requested roles
+    let needsRoles: string[] = [];
+    for (const roleName of roles) {
+      const roleHash = keccak256(encodePacked(['string'], [roleName]));
+      const hasRole = await publicClient.readContract({
+        address: contracts.escrow,
+        abi: escrowArtifact.abi,
+        functionName: 'hasRole',
+        args: [roleHash, signerAddress]
+      });
+      if (!hasRole) {
+        needsRoles.push(roleName);
+      }
+    }
+
+    if (needsRoles.length === 0) {
+      return; // Already has all roles
+    }
+
+    // We need to grant roles. Let's find an account with ADMIN_ROLE.
+    const ADMIN_ROLE = keccak256(encodePacked(['string'], ['ADMIN_ROLE']));
+    
+    // Check if the current signer has ADMIN_ROLE
+    const signerHasAdmin = await publicClient.readContract({
+      address: contracts.escrow,
+      abi: escrowArtifact.abi,
+      functionName: 'hasRole',
+      args: [ADMIN_ROLE, signerAddress]
+    });
+
+    if (signerHasAdmin) {
+      // The current signer can grant roles to itself!
+      const walletClient = resolveWalletClient(walletSigner);
+      for (const roleName of needsRoles) {
+        const roleHash = keccak256(encodePacked(['string'], [roleName]));
+        if (onProgress) {
+          onProgress(`Signer is admin but lacks ${roleName}. Granting role...`);
+        }
+        const grantTx = await walletClient.writeContract({
+          address: contracts.escrow,
+          abi: escrowArtifact.abi,
+          functionName: 'grantRole',
+          args: [roleHash, signerAddress]
+        });
+        await publicClient.waitForTransactionReceipt({ hash: grantTx });
+        if (onProgress) {
+          onProgress(`Granted ${roleName} to itself!`);
+        }
+      }
+      return;
+    }
+
+    // Check if the sandbox wallet has ADMIN_ROLE
+    const sandboxWallet = getOrCreateSandboxWallet();
+    const sandboxHasAdmin = await publicClient.readContract({
+      address: contracts.escrow,
+      abi: escrowArtifact.abi,
+      functionName: 'hasRole',
+      args: [ADMIN_ROLE, sandboxWallet.address]
+    });
+
+    if (sandboxHasAdmin) {
+      // Use sandbox wallet to grant roles
+      const adminWalletClient = getWalletClient(sandboxWallet.privateKey);
+      for (const roleName of needsRoles) {
+        const roleHash = keccak256(encodePacked(['string'], [roleName]));
+        if (onProgress) {
+          onProgress(`Granting ${roleName} to signer via sandbox admin...`);
+        }
+        const grantTx = await adminWalletClient.writeContract({
+          address: contracts.escrow,
+          abi: escrowArtifact.abi,
+          functionName: 'grantRole',
+          args: [roleHash, signerAddress]
+        });
+        await publicClient.waitForTransactionReceipt({ hash: grantTx });
+        if (onProgress) {
+          onProgress(`Granted ${roleName} via sandbox admin.`);
+        }
+      }
+      return;
+    }
+
+    // Neither has ADMIN_ROLE. Warn the user.
+    if (onProgress) {
+      onProgress(`Warning: Neither signer nor sandbox wallet has ADMIN_ROLE on the escrow contract. Proceeding...`);
+    }
+  } catch (err) {
+    console.error('Failed to ensure roles for signer:', err);
+    if (onProgress) {
+      onProgress(`Warning: Role grant check failed. Proceeding...`);
+    }
+  }
+}
+
 // 5. Query Balances (USDC/EURC has 6 decimals, native Gas has 18 decimals)
 export async function queryBalances(address: Address) {
   try {
@@ -477,67 +598,73 @@ export async function createShipmentOnchain(
   },
   onProgress: (status: string) => void
 ): Promise<{ shipmentId: number; txHash: string }> {
-  const publicClient = getPublicClient();
-  const walletClient = resolveWalletClient(walletSigner);
-
-  const cargoRaw = parseUnits(params.cargoValue.toString(), 6);
-  const shippingRaw = parseUnits(params.shippingFee.toString(), 6);
-  const demurrageRaw = parseUnits(params.demurrageRatePerHour.toString(), 6);
-  const totalNeeded = cargoRaw + shippingRaw;
-  
-  const tokenAddress = params.token || contracts.usdc;
-  const tokenSymbol = tokenAddress === contracts.eurc ? 'EURC' : 'USDC';
-
-  onProgress(`Step 1: Approving ${tokenSymbol} spending allowance...`);
-  const approveHash = await walletClient.writeContract({
-    address: tokenAddress,
-    abi: erc20Abi,
-    functionName: 'approve',
-    args: [contracts.escrow, totalNeeded],
-  });
-  
-  onProgress(`Waiting for ${tokenSymbol} allowance confirmation...`);
-  await publicClient.waitForTransactionReceipt({ hash: approveHash });
-  onProgress('Allowance approved successfully.');
-
-  onProgress('Step 2: Depositing funds and creating Shipment Escrow...');
-  const poIdBig = params.poId !== undefined && params.poId !== null ? BigInt(params.poId) : 999999n;
-
-  const createHash = await walletClient.writeContract({
-    address: contracts.escrow,
-    abi: escrowArtifact.abi,
-    functionName: 'createShipment',
-    args: [
-      params.supplier as Address,
-      params.carrier as Address,
-      cargoRaw,
-      shippingRaw,
-      params.departurePort,
-      params.destinationPort,
-      BigInt(params.freeTimeHours),
-      demurrageRaw,
-      tokenAddress,
-      poIdBig
-    ]
-  });
-
-  onProgress('Waiting for shipment confirmation...');
-  await publicClient.waitForTransactionReceipt({ hash: createHash });
-  
-  let shipmentId = 0;
   try {
-    const nextId = await publicClient.readContract({
+    const publicClient = getPublicClient();
+    const walletClient = resolveWalletClient(walletSigner);
+
+    const cargoRaw = parseUnits(params.cargoValue.toString(), 6);
+    const shippingRaw = parseUnits(params.shippingFee.toString(), 6);
+    const demurrageRaw = parseUnits(params.demurrageRatePerHour.toString(), 6);
+    const totalNeeded = cargoRaw + shippingRaw;
+    
+    const tokenAddress = params.token || contracts.usdc;
+    const tokenSymbol = tokenAddress === contracts.eurc ? 'EURC' : 'USDC';
+
+    onProgress(`Step 1: Approving ${tokenSymbol} spending allowance...`);
+    const approveHash = await walletClient.writeContract({
+      address: tokenAddress,
+      abi: erc20Abi,
+      functionName: 'approve',
+      args: [contracts.escrow, totalNeeded],
+    });
+    
+    onProgress(`Waiting for ${tokenSymbol} allowance confirmation...`);
+    await publicClient.waitForTransactionReceipt({ hash: approveHash });
+    onProgress('Allowance approved successfully.');
+
+    onProgress('Step 2: Depositing funds and creating Shipment Escrow...');
+    const poIdBig = params.poId !== undefined && params.poId !== null ? BigInt(params.poId) : 999999n;
+
+    const createHash = await walletClient.writeContract({
       address: contracts.escrow,
       abi: escrowArtifact.abi,
-      functionName: 'nextShipmentId'
-    }) as bigint;
-    shipmentId = Number(nextId) - 1;
-  } catch (err) {
-    console.error('Error parsing event logs', err);
-  }
+      functionName: 'createShipment',
+      args: [
+        params.supplier as Address,
+        params.carrier as Address,
+        cargoRaw,
+        shippingRaw,
+        params.departurePort,
+        params.destinationPort,
+        BigInt(params.freeTimeHours),
+        demurrageRaw,
+        tokenAddress,
+        poIdBig
+      ]
+    });
 
-  onProgress(`Shipment created successfully! ID: ${shipmentId}`);
-  return { shipmentId, txHash: createHash };
+    onProgress('Waiting for shipment confirmation...');
+    await publicClient.waitForTransactionReceipt({ hash: createHash });
+    
+    let shipmentId = 0;
+    try {
+      const nextId = await publicClient.readContract({
+        address: contracts.escrow,
+        abi: escrowArtifact.abi,
+        functionName: 'nextShipmentId'
+      }) as bigint;
+      shipmentId = Number(nextId) - 1;
+    } catch (err) {
+      console.error('Error parsing event logs', err);
+    }
+
+    onProgress(`Shipment created successfully! ID: ${shipmentId}`);
+    return { shipmentId, txHash: createHash };
+  } catch (err) {
+    console.error("=== createShipmentOnchain error inside service ===");
+    console.error(err);
+    throw err;
+  }
 }
 
 export async function triggerMilestoneOnchain(
@@ -568,18 +695,25 @@ export async function triggerMilestoneOnchain(
     desc = 'Customs Clearance';
   }
 
-  onProgress(`Triggering ${desc} on-chain...`);
-  const hash = await walletClient.writeContract({
-    address: contracts.escrow,
-    abi: escrowArtifact.abi,
-    functionName,
-    args: [BigInt(shipmentId), tempScaled]
-  });
+  try {
+    await ensureRolesForSigner(walletSigner, ['ORACLE_ROLE'], publicClient, contracts, onProgress);
+    onProgress(`Triggering ${desc} on-chain...`);
+    const hash = await walletClient.writeContract({
+      address: contracts.escrow,
+      abi: escrowArtifact.abi,
+      functionName,
+      args: [BigInt(shipmentId), tempScaled]
+    });
 
-  onProgress('Waiting for milestone confirmation...');
-  await publicClient.waitForTransactionReceipt({ hash });
-  onProgress(`${desc} confirmed!`);
-  return hash;
+    onProgress('Waiting for milestone confirmation...');
+    await publicClient.waitForTransactionReceipt({ hash });
+    onProgress(`${desc} confirmed!`);
+    return hash;
+  } catch (err) {
+    console.error("=== triggerMilestoneOnchain error inside service ===");
+    console.error(err);
+    throw err;
+  }
 }
 
 export async function getDemurragePenaltyOnchain(
@@ -1160,6 +1294,7 @@ export async function wrapEscrowInUSYCOnchain(
   const publicClient = getPublicClient();
   const walletClient = resolveWalletClient(walletSigner);
 
+  await ensureRolesForSigner(walletSigner, ['OPERATOR_ROLE'], publicClient, contracts, onProgress);
   onProgress('Wrapping escrow funds into USYC Yield Vault (ERC-4626)...');
   const hash = await walletClient.writeContract({
     address: contracts.escrow,
@@ -1183,6 +1318,7 @@ export async function redeemUSYCOnchain(
   const publicClient = getPublicClient();
   const walletClient = resolveWalletClient(walletSigner);
 
+  await ensureRolesForSigner(walletSigner, ['OPERATOR_ROLE'], publicClient, contracts, onProgress);
   onProgress('Redeeming USYC shares back to USDC...');
   const hash = await walletClient.writeContract({
     address: contracts.escrow,

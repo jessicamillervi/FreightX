@@ -57,7 +57,7 @@ export async function getStableFXQuote(
   amount: string
 ): Promise<FXQuote> {
   const apiKey = process.env.STABLEFX_API_KEY;
-  const isMock = !apiKey || apiKey === 'YOUR_STABLEFX_API_KEY' || apiKey === '' || apiKey.includes('your-') || apiKey.includes('43386a8e9169df96e1de729e71ab62e4') || apiKey === 'mock_key_for_testing';
+  const isMock = !apiKey || apiKey === 'YOUR_STABLEFX_API_KEY' || apiKey === '' || apiKey.includes('your-') || apiKey.includes('43386a8e9169df96e1de729e71ab62e4') || apiKey === 'mock_key_for_testing' || apiKey.startsWith('TEST_') || apiKey.includes('mock_key');
 
   const fromCurr = fromCurrency.toUpperCase();
   const toCurr = toCurrency.toUpperCase();
@@ -139,7 +139,7 @@ export async function executeStableFXSwap(
   userAddress: Address
 ): Promise<FXTrade> {
   const apiKey = process.env.STABLEFX_API_KEY;
-  const isMock = !apiKey || apiKey === 'YOUR_STABLEFX_API_KEY' || apiKey === '' || apiKey.includes('your-') || apiKey.includes('43386a8e9169df96e1de729e71ab62e4') || apiKey === 'mock_key_for_testing';
+  const isMock = !apiKey || apiKey === 'YOUR_STABLEFX_API_KEY' || apiKey === '' || apiKey.includes('your-') || apiKey.includes('43386a8e9169df96e1de729e71ab62e4') || apiKey === 'mock_key_for_testing' || apiKey.startsWith('TEST_') || apiKey.includes('mock_key');
 
   if (!isMock) {
     try {
