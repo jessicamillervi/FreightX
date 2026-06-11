@@ -113,24 +113,24 @@ export default function AnalyticsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-4 sm:p-8 font-sans print:bg-white print:text-black">
+    <div className="min-h-screen bg-[var(--bg-main)] text-[var(--text-primary)] p-4 sm:p-8 font-sans print:bg-white print:text-black">
       
       {/* Header Panel */}
-      <header className="max-w-7xl mx-auto mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-900 pb-6 print:border-none">
+      <header className="max-w-7xl mx-auto mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-[var(--border)] pb-6 print:border-none">
         <div className="flex items-center gap-3">
           <button 
             onClick={() => router.push('/')}
-            className="p-2.5 bg-slate-900/80 hover:bg-slate-800 border border-slate-800 rounded-lg text-slate-400 hover:text-white transition-colors"
+            className="p-2.5 bg-[var(--bg-elevated)] hover:bg-[var(--bg-hover)] border border-[var(--border)] rounded-lg text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
             title="Go back to Dashboard"
           >
             <ArrowLeft className="w-4 h-4" />
           </button>
           <div>
             <div className="flex items-center gap-2">
-              <span className="p-1 bg-teal-500/10 border border-teal-500/20 rounded text-teal-400 text-[10px] font-bold tracking-wider uppercase">Enterprise</span>
-              <h1 className="text-2xl font-extrabold text-white tracking-tight font-display">Analytics & Financial Intelligence</h1>
+              <span className="p-1 bg-[var(--primary-soft)] border border-[var(--primary-border)] rounded text-[var(--text-primary)] text-[10px] font-bold tracking-wider uppercase">Enterprise</span>
+              <h1 className="text-2xl font-extrabold text-[var(--text-primary)] tracking-tight font-display">Analytics & Financial Intelligence</h1>
             </div>
-            <p className="text-slate-400 text-xs mt-1">
+            <p className="text-[var(--text-secondary)] text-xs mt-1">
               Live trade logs, risk heatmaps, yield rates, and counterparty scorecard indicators.
             </p>
           </div>
@@ -142,17 +142,17 @@ export default function AnalyticsPage() {
             onClick={() => setRealtime(!realtime)}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all duration-200 flex items-center gap-1.5 ${
               realtime 
-                ? 'bg-emerald-950/40 border-emerald-800 text-emerald-400' 
-                : 'bg-slate-900 border-slate-800 text-slate-400'
+                ? 'bg-[var(--success-soft)] border-[var(--success-border)] text-[var(--success)]' 
+                : 'bg-[var(--bg-elevated)] border-[var(--border)] text-[var(--text-muted)]'
             }`}
           >
-            <span className={`w-2.5 h-2.5 rounded-full ${realtime ? 'bg-emerald-500 animate-pulse' : 'bg-slate-500'}`} />
-            {realtime ? 'Live WebSocket Updates' : 'Updates Paused'}
+            <span className={`w-2.5 h-2.5 rounded-full ${realtime ? 'bg-[var(--success)] animate-pulse' : 'bg-[var(--text-disabled)]'}`} />
+            {realtime ? 'Live Updates Active' : 'Updates Paused'}
           </button>
 
           <button
             onClick={handleExportPDF}
-            className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg text-xs font-semibold text-white transition-all flex items-center gap-1.5"
+            className="px-3 py-1.5 bg-[var(--bg-elevated)] hover:bg-[var(--bg-hover)] border border-[var(--border)] rounded-lg text-xs font-semibold text-[var(--text-primary)] transition-all flex items-center gap-1.5"
           >
             <Download className="w-3.5 h-3.5" />
             Export to PDF
@@ -164,9 +164,9 @@ export default function AnalyticsPage() {
       <main className="max-w-7xl mx-auto space-y-6">
         
         {/* Filter Toolbar controls */}
-        <section className="bg-slate-900/60 backdrop-blur-md border border-slate-800/80 rounded-xl p-5 shadow-lg flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 print:hidden">
+        <section className="bg-[var(--bg-elevated)] border border-[var(--border)] rounded-xl p-5 shadow-sm flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 print:hidden">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-slate-400 text-xs font-semibold flex items-center gap-1.5 mr-2">
+            <span className="text-[var(--text-secondary)] text-xs font-semibold flex items-center gap-1.5 mr-2">
               <SlidersHorizontal className="w-3.5 h-3.5" />
               Role Filter:
             </span>
@@ -176,8 +176,8 @@ export default function AnalyticsPage() {
                 onClick={() => setRole(r)}
                 className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold border transition-all duration-150 uppercase tracking-wider ${
                   role === r
-                    ? 'bg-teal-600 border-teal-500 text-white shadow-md'
-                    : 'bg-slate-950/60 border-slate-800 text-slate-400 hover:text-white'
+                    ? 'bg-[var(--primary)] border-[var(--primary)] text-white shadow-sm'
+                    : 'bg-[var(--bg-elevated)] border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
                 }`}
               >
                 {r}
@@ -185,21 +185,21 @@ export default function AnalyticsPage() {
             ))}
           </div>
 
-          <div className="flex items-center gap-3 w-full lg:w-auto font-mono text-[11px] text-slate-400 bg-slate-950/80 p-2.5 border border-slate-850 rounded-lg">
-            <Database className="w-4 h-4 text-teal-400" />
-            <span className="text-slate-500">WALLET:</span>
-            <span className="text-white truncate max-w-[200px]" title={address}>{address}</span>
+          <div className="flex items-center gap-3 w-full lg:w-auto font-mono text-[11px] text-[var(--text-secondary)] bg-[var(--bg-hover)] p-2.5 border border-[var(--border)] rounded-lg">
+            <Database className="w-4 h-4 text-[var(--text-primary)]" />
+            <span className="text-[var(--text-muted)]">WALLET:</span>
+            <span className="text-[var(--text-primary)] truncate max-w-[200px]" title={address}>{address}</span>
           </div>
         </section>
 
         {/* Loading / Error States */}
         {loading && !analyticsData ? (
-          <div className="text-center py-20 bg-slate-900/40 border border-slate-850 rounded-xl">
-            <RefreshCw className="animate-spin-slow w-8 h-8 text-teal-500 mx-auto mb-3" />
-            <p className="text-slate-400 text-xs">Aggregating multi-chain logistics databases...</p>
+          <div className="text-center py-20 bg-[var(--bg-elevated)] border border-[var(--border)] rounded-xl shadow-sm">
+            <RefreshCw className="animate-spin-slow w-8 h-8 text-[var(--text-muted)] mx-auto mb-3" />
+            <p className="text-[var(--text-secondary)] text-xs">Aggregating multi-chain logistics databases...</p>
           </div>
         ) : error ? (
-          <div className="bg-red-950/30 border border-red-800/60 rounded-xl p-6 text-center text-red-400 text-xs">
+          <div className="bg-[var(--danger-soft)] border border-[var(--danger-border)] rounded-xl p-6 text-center text-[var(--danger)] text-xs">
             {error}
           </div>
         ) : (
@@ -209,13 +209,13 @@ export default function AnalyticsPage() {
               {/* Portfolio Grid */}
               <section className="relative">
                 <div className="flex justify-between items-center mb-3">
-                  <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                    <Layers className="w-3.5 h-3.5 text-teal-400" />
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5">
+                    <Layers className="w-3.5 h-3.5 text-[var(--text-secondary)]" />
                     Macro Portfolio Position
                   </h2>
                   <button 
                     onClick={() => handleExportCSV('portfolio')}
-                    className="text-slate-500 hover:text-white text-[10px] font-semibold flex items-center gap-1 print:hidden"
+                    className="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-[10px] font-semibold flex items-center gap-1 print:hidden"
                   >
                     Export CSV
                   </button>
@@ -229,13 +229,13 @@ export default function AnalyticsPage() {
                 {/* Risk matrix */}
                 <section>
                   <div className="flex justify-between items-center mb-3">
-                    <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-red-400" />
+                    <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-[var(--accent)]" />
                       Voyage Risk Vectors
                     </h2>
                     <button 
                       onClick={() => handleExportCSV('risk')}
-                      className="text-slate-500 hover:text-white text-[10px] font-semibold flex items-center gap-1 print:hidden"
+                      className="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-[10px] font-semibold flex items-center gap-1 print:hidden"
                     >
                       Export CSV
                     </button>
@@ -246,13 +246,13 @@ export default function AnalyticsPage() {
                 {/* Trade Finance graphs */}
                 <section>
                   <div className="flex justify-between items-center mb-3">
-                    <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                      <TrendingUp className="w-3.5 h-3.5 text-teal-400" />
+                    <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5">
+                      <TrendingUp className="w-3.5 h-3.5 text-[var(--text-secondary)]" />
                       Pre-Shipment Capital Pools
                     </h2>
                     <button 
                       onClick={() => handleExportCSV('tradeFinance')}
-                      className="text-slate-500 hover:text-white text-[10px] font-semibold flex items-center gap-1 print:hidden"
+                      className="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-[10px] font-semibold flex items-center gap-1 print:hidden"
                     >
                       Export CSV
                     </button>
@@ -265,13 +265,13 @@ export default function AnalyticsPage() {
               {/* Counterparty rating leaderboard */}
               <section>
                 <div className="flex justify-between items-center mb-3">
-                  <h2 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
-                    <User className="w-3.5 h-3.5 text-emerald-400" />
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] flex items-center gap-1.5">
+                    <User className="w-3.5 h-3.5 text-[var(--success)]" />
                     Reputation Matrices
                   </h2>
                   <button 
                     onClick={() => handleExportCSV('reputation')}
-                    className="text-slate-500 hover:text-white text-[10px] font-semibold flex items-center gap-1 print:hidden"
+                    className="text-[var(--text-muted)] hover:text-[var(--text-primary)] text-[10px] font-semibold flex items-center gap-1 print:hidden"
                   >
                     Export CSV
                   </button>

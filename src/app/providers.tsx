@@ -1,12 +1,12 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { WagmiProvider, http } from 'wagmi';
 import {
   getDefaultConfig,
   RainbowKitProvider,
-  darkTheme,
+  lightTheme,
 } from '@rainbow-me/rainbowkit';
 import { type Chain } from 'viem';
 import { sepolia, arbitrumSepolia } from 'viem/chains';
@@ -39,14 +39,26 @@ const config = getDefaultConfig({
   ssr: false,
 });
 
-const queryClient = new QueryClient();
-
 export function Providers({ children }: { children: React.ReactNode }) {
+  // QueryClient must be created inside the component via useState to avoid
+  // the "Cannot update a component while rendering a different component"
+  // error in React 19. useState guarantees stable identity across re-renders
+  // without triggering state updates during render.
+  const [queryClient] = useState(() => new QueryClient({
+    defaultOptions: {
+      queries: {
+        // Prevent aggressive refetching that can cause hydration mismatches
+        refetchOnWindowFocus: false,
+        retry: 2,
+      },
+    },
+  }));
+
   return (
     <WagmiProvider config={config}>
       <QueryClientProvider client={queryClient}>
-        <RainbowKitProvider theme={darkTheme({
-          accentColor: '#0088ff',
+        <RainbowKitProvider theme={lightTheme({
+          accentColor: '#111111',
           accentColorForeground: 'white',
           borderRadius: 'medium',
           overlayBlur: 'small',
