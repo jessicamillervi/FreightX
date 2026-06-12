@@ -25,7 +25,8 @@ import {
   CircleDollarSign,
   User,
   Settings,
-  HelpCircle
+  HelpCircle,
+  Search
 } from 'lucide-react';
 import { useAccount } from 'wagmi';
 
@@ -37,7 +38,8 @@ import {
   LoadingSkeleton, 
   ToastContainer,
   ArbitratorRegistry,
-  DisputePanel
+  DisputePanel,
+  CommandPalette
 } from '@/components';
 import { 
   SandboxTab, 
@@ -509,6 +511,9 @@ function Dashboard() {
   return (
     <ErrorBoundary>
       <div className="app-layout-wrapper">
+        {/* Command Palette for power users */}
+        <CommandPalette />
+
         {/* Toast Notifications */}
         <ToastContainer toasts={toasts} />
 
@@ -695,7 +700,46 @@ function Dashboard() {
                 <p className="section-subtitle" style={{ fontSize: '12px', marginTop: 0 }}>{currentMeta.desc}</p>
               </div>
               
-              <div className="header-right">
+              <div className="header-right" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <button 
+                  onClick={() => {
+                    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }));
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '6px 12px',
+                    background: 'var(--bg-elevated)',
+                    border: '1px solid var(--border)',
+                    borderRadius: 'var(--radius-sm)',
+                    fontSize: '12px',
+                    color: 'var(--text-secondary)',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                  }}
+                  onMouseOver={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--border-hover)';
+                    e.currentTarget.style.backgroundColor = 'var(--bg-hover)';
+                  }}
+                  onMouseOut={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--border)';
+                    e.currentTarget.style.backgroundColor = 'var(--bg-elevated)';
+                  }}
+                >
+                  <Search size={14} />
+                  <span>Search commands</span>
+                  <kbd style={{
+                    padding: '2px 4px',
+                    backgroundColor: 'var(--bg-hover)',
+                    border: '1px solid var(--border)',
+                    borderRadius: '3px',
+                    fontSize: '10px',
+                    color: 'var(--text-muted)',
+                    fontFamily: 'var(--font-mono)'
+                  }}>⌘K</kbd>
+                </button>
+
                 <div className="network-pill">
                   <span className="network-dot" style={{ background: appMode === 'live' ? 'var(--success)' : 'var(--text-muted)' }} />
                   {appMode === 'live' ? 'Arc L1 Testnet' : 'Sandbox Network'}

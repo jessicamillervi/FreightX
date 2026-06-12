@@ -16,5 +16,7 @@ export { PortfolioOverview } from './analytics/PortfolioOverview';
 export { RiskHeatmap } from './analytics/RiskHeatmap';
 export { TradeFinanceChart } from './analytics/TradeFinanceChart';
 export { ReputationRanking } from './analytics/ReputationRanking';
+export { CommandPalette } from './CommandPalette';
+
 
 
