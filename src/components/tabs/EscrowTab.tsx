@@ -2,7 +2,20 @@
 
 import React, { useState, useEffect } from 'react';
 import { type WalletClient } from 'viem';
-import { Box, Anchor, TrendingUp, Loader2, Landmark, Check, Coins } from 'lucide-react';
+import { 
+  Box, 
+  Anchor, 
+  TrendingUp, 
+  Loader2, 
+  Landmark, 
+  Check, 
+  Coins, 
+  ChevronLeft, 
+  ChevronRight, 
+  Info, 
+  Sparkles, 
+  Shield 
+} from 'lucide-react';
 import { spendFromUnifiedBalance } from '@/lib/unified-balance';
 import { useWallet } from '@/hooks/useWallet';
 import { useShipments } from '@/hooks/useShipments';
@@ -37,8 +50,11 @@ export default function EscrowTab() {
 
   // Creation Form State
   const [isCreatingShipment, setIsCreatingShipment] = useState(false);
+  const [wizardStep, setWizardStep] = useState(1);
   const [createProgress, setCreateProgress] = useState('');
   const [formData, setFormData] = useState({
+    cargoName: 'Medical Equipment Container',
+    containerNumber: 'MSKU-481920-5',
     supplier: '0x8D92F677cd6303cEc089B5F319D72Aa797Da5300',
     carrier: '0x1C902e11A58c4BB489B3ab1c51CEf8BC8757845E',
     cargoValue: '2.0',
@@ -51,7 +67,8 @@ export default function EscrowTab() {
     poId: '',
     cctpPending: false,
     useUnifiedBalance: false,
-    unifiedSourceChain: 'Ethereum_Sepolia' as 'Ethereum_Sepolia' | 'Arbitrum_Sepolia'
+    unifiedSourceChain: 'Ethereum_Sepolia' as 'Ethereum_Sepolia' | 'Arbitrum_Sepolia',
+    usycSweep: true
   });
 
   // PO Request Form
@@ -133,75 +150,92 @@ export default function EscrowTab() {
     const poIdNum = formData.poId !== '' ? parseInt(formData.poId) : 999999;
 
     if (appMode === 'local') {
-      const newId = shipments.length > 0 ? Math.max(...shipments.map(s => s.id)) + 1 : 101;
+      setCreateProgress('Securing capital vault...');
       
-      let releasedSupplier = 0;
-      const beneficiary = formData.supplier;
-      let hasPOLoan = false;
+      setTimeout(() => {
+        setCreateProgress('Registering Cargo Twin NFT (Minting ERC-721)...');
+        
+        setTimeout(() => {
+          setCreateProgress('Activating Telemetry Sensor...');
+          
+          setTimeout(() => {
+            const newId = shipments.length > 0 ? Math.max(...shipments.map(s => s.id)) + 1 : 101;
+            
+            let releasedSupplier = 0;
+            const beneficiary = formData.supplier;
+            let hasPOLoan = false;
 
-      // Handle local PO repayment waterfall
-      if (formData.poId !== '') {
-        const po = poLoans.find(p => p.id === poIdNum);
-        if (po) {
-          po.repaid = true;
-          releasedSupplier = po.repaymentAmount;
-          hasPOLoan = true;
-          logTerminal(`[PO REPAYMENT WATERFALL] PO Loan #${poIdNum} Repayment amount (${po.repaymentAmount} ${formData.tokenType}) sent directly to Investor (${po.investor.slice(0,8)}...).`);
-        }
-      }
+            // Handle local PO repayment waterfall
+            if (formData.poId !== '') {
+              const po = poLoans.find(p => p.id === poIdNum);
+              if (po) {
+                po.repaid = true;
+                releasedSupplier = po.repaymentAmount;
+                hasPOLoan = true;
+                logTerminal(`[PO REPAYMENT WATERFALL] PO Loan #${poIdNum} Repayment amount (${po.repaymentAmount} ${formData.tokenType}) sent directly to Investor (${po.investor.slice(0,8)}...).`);
+              }
+            }
 
-      const activeFxRate = formData.tokenType === 'EURC' ? aedToEurcRate : aedToUsdcRate;
+            const activeFxRate = formData.tokenType === 'EURC' ? aedToEurcRate : aedToUsdcRate;
 
-      const newShipment: ShipmentData = {
-        id: newId,
-        buyer: signerType === 'web3' && connectedAddress ? connectedAddress : wallet.address,
-        supplier: formData.supplier,
-        carrier: formData.carrier,
-        cargoValue: val,
-        shippingFee: fee,
-        releasedSupplierAmount: releasedSupplier,
-        releasedCarrierAmount: 0,
-        departurePort: formData.departurePort,
-        destinationPort: formData.destinationPort,
-        status: 'Created',
-        arrivedTimestamp: 0,
-        customClearanceTimestamp: 0,
-        pickupTimestamp: 0,
-        freeTimeHours: freeTime,
-        demurrageRatePerHour: rate,
-        demurragePenaltyPaid: 0,
-        passportTokenId: Math.floor(Math.random() * 1000) + 100,
-        temperature: 4.2, 
-        location: formData.departurePort,
-        history: [
-          { timestamp: Date.now(), status: 'Created', location: formData.departurePort, temperature: 4.2 }
-        ],
-        createdTimestamp: Date.now(),
-        yieldEarned: 0,
-        temperatureViolations: 0,
-        temperaturePenalty: 0,
-        beneficiary: beneficiary,
-        factoringPrice: 0,
-        factoringActive: false,
-        token: tokenAddr,
-        poId: hasPOLoan ? poIdNum : undefined,
-        hasPOLoan: hasPOLoan,
-        lockedFxRate: activeFxRate
-      };
+            const newShipment: ShipmentData = {
+              id: newId,
+              buyer: signerType === 'web3' && connectedAddress ? connectedAddress : wallet.address,
+              supplier: formData.supplier,
+              carrier: formData.carrier,
+              cargoValue: val,
+              shippingFee: fee,
+              releasedSupplierAmount: releasedSupplier,
+              releasedCarrierAmount: 0,
+              departurePort: formData.departurePort,
+              destinationPort: formData.destinationPort,
+              status: 'Created',
+              arrivedTimestamp: 0,
+              customClearanceTimestamp: 0,
+              pickupTimestamp: 0,
+              freeTimeHours: freeTime,
+              demurrageRatePerHour: rate,
+              demurragePenaltyPaid: 0,
+              passportTokenId: Math.floor(Math.random() * 1000) + 100,
+              temperature: 4.2, 
+              location: formData.departurePort,
+              history: [
+                { timestamp: Date.now(), status: 'Created', location: formData.departurePort, temperature: 4.2 }
+              ],
+              createdTimestamp: Date.now(),
+              yieldEarned: 0,
+              temperatureViolations: 0,
+              temperaturePenalty: 0,
+              beneficiary: beneficiary,
+              factoringPrice: 0,
+              factoringActive: false,
+              token: tokenAddr,
+              poId: hasPOLoan ? poIdNum : undefined,
+              hasPOLoan: hasPOLoan,
+              lockedFxRate: activeFxRate,
+              // Custom properties
+              cargoName: formData.cargoName,
+              containerNumber: formData.containerNumber,
+              usycWrapped: formData.usycSweep
+            } as any;
 
-      const updated = [newShipment, ...shipments];
-      setShipments(updated);
-      saveLocalShipments(updated);
-      setSelectedShipmentId(newId);
-      logTerminal(`Local Shipment #${newId} Escrow created. Deposited ${val + fee} ${formData.tokenType}. Locked FX: 1 AED = ${activeFxRate.toFixed(4)} ${formData.tokenType}`);
-      showToast('Local Cargo Escrow Created!', 'success');
-      setIsCreatingShipment(false);
-      setCreateProgress('');
-      setFormData({
-        ...formData,
-        poId: ''
-      });
-      setLoading(false);
+            const updated = [newShipment, ...shipments];
+            setShipments(updated);
+            saveLocalShipments(updated);
+            setSelectedShipmentId(newId);
+            logTerminal(`Local Shipment #${newId} Escrow created. Deposited ${val + fee} ${formData.tokenType}. Locked FX: 1 AED = ${activeFxRate.toFixed(4)} ${formData.tokenType}`);
+            showToast('Local Cargo Escrow Created!', 'success');
+            setIsCreatingShipment(false);
+            setCreateProgress('');
+            setFormData({
+              ...formData,
+              poId: ''
+            });
+            setLoading(false);
+            setWizardStep(1);
+          }, 850);
+        }, 850);
+      }, 850);
     } else {
       // Live on-chain
       if (!contracts) {
@@ -339,6 +373,7 @@ export default function EscrowTab() {
           setSelectedShipmentId(shipmentId);
           
           setIsCreatingShipment(false);
+          setWizardStep(1);
           setCreateProgress('');
           setFormData({
             ...formData,
@@ -415,6 +450,7 @@ export default function EscrowTab() {
             showToast(`CCTP onchain creation failed. Simulated shipment #${newId} created!`, 'warning');
             
             setIsCreatingShipment(false);
+            setWizardStep(1);
             setCreateProgress('');
             setFormData({
               ...formData,
@@ -424,6 +460,7 @@ export default function EscrowTab() {
           } else {
             showToast('Creation failed.', 'error');
             setIsCreatingShipment(false);
+            setWizardStep(1);
             setCreateProgress('');
           }
         } finally {
@@ -527,6 +564,7 @@ export default function EscrowTab() {
         setSelectedShipmentId(shipmentId);
         
         setIsCreatingShipment(false);
+        setWizardStep(1);
         setCreateProgress('');
         setFormData({
           ...formData,
@@ -619,6 +657,7 @@ export default function EscrowTab() {
           showToast(`Onchain creation failed. Simulated shipment #${newId} created!`, 'warning');
           
           setIsCreatingShipment(false);
+          setWizardStep(1);
           setCreateProgress('');
           setFormData({
             ...formData,
@@ -629,6 +668,7 @@ export default function EscrowTab() {
         } else {
           showToast('Token transfer or creation failed. Fund your address.', 'error');
           setIsCreatingShipment(false);
+          setWizardStep(1);
           setCreateProgress('');
         }
       } finally {
@@ -906,6 +946,44 @@ export default function EscrowTab() {
     }
   };
 
+  const CARRIERS = [
+    { name: 'Maersk Line', address: '0x1C902e11A58c4BB489B3ab1c51CEf8BC8757845E' },
+    { name: 'MSC Logistics', address: '0x8888888888888888888888888888888888888888' },
+    { name: 'Hapag-Lloyd', address: '0x9999999999999999999999999999999999999999' },
+    { name: 'Evergreen Marine', address: '0x7777777777777777777777777777777777777777' }
+  ];
+
+  const getLoadingStepStatus = (index: number) => {
+    if (!loading) return 'pending';
+    const progressLower = createProgress.toLowerCase();
+    
+    if (index === 1) {
+      if (progressLower.includes('nft') || progressLower.includes('minter') || progressLower.includes('sensor') || progressLower.includes('telemetry') || progressLower.includes('synced') || progressLower.includes('success') || progressLower.includes('create')) {
+        return 'completed';
+      }
+      return 'active';
+    }
+    if (index === 2) {
+      if (progressLower.includes('nft') || progressLower.includes('minter')) {
+        return 'active';
+      }
+      if (progressLower.includes('sensor') || progressLower.includes('telemetry') || progressLower.includes('synced') || progressLower.includes('success')) {
+        return 'completed';
+      }
+      return 'pending';
+    }
+    if (index === 3) {
+      if (progressLower.includes('sensor') || progressLower.includes('telemetry')) {
+        return 'active';
+      }
+      if (progressLower.includes('synced') || progressLower.includes('success')) {
+        return 'completed';
+      }
+      return 'pending';
+    }
+    return 'pending';
+  };
+
   const [showPOSection, setShowPOSection] = useState(false);
 
   return (
@@ -927,307 +1005,643 @@ export default function EscrowTab() {
 
       {/* StableFX Live conversion and Create Escrow form side-by-side */}
       {isCreatingShipment && (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '2rem' }}>
-          
-          {/* Escrow Creation Form */}
-          <div className="glass-panel" style={{ borderColor: 'var(--primary-border)', padding: '1.5rem' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-              <h3 style={{ fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Anchor size={18} style={{ color: 'var(--primary)' }} /> Configure New Escrow Vault
-              </h3>
-              <button onClick={() => setIsCreatingShipment(false)} className="btn btn-secondary btn-icon" style={{ width: '32px', height: '32px', borderRadius: '50%' }}>
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(10, 10, 12, 0.75)',
+          backdropFilter: 'blur(10px)',
+          WebkitBackdropFilter: 'blur(10px)',
+          zIndex: 1000,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          padding: '24px'
+        }}>
+          <div className="glass-panel" style={{
+            width: '100%',
+            maxWidth: '680px',
+            background: 'var(--bg-elevated)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-lg)',
+            boxShadow: 'var(--shadow-premium)',
+            padding: 0,
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+            maxHeight: '90vh',
+            position: 'relative'
+          }}>
+            
+            {/* Custom Loading State Overlay */}
+            {loading && (
+              <div style={{
+                position: 'absolute',
+                top: 0, left: 0, right: 0, bottom: 0,
+                backgroundColor: 'rgba(10, 10, 12, 0.95)',
+                zIndex: 1100,
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '32px',
+                textAlign: 'center'
+              }}>
+                <div style={{
+                  padding: '24px',
+                  borderRadius: 'var(--radius-md)',
+                  background: 'var(--bg-main)',
+                  border: '1px solid var(--border)',
+                  maxWidth: '400px',
+                  width: '100%',
+                  boxShadow: 'var(--shadow-premium)'
+                }}>
+                  <h3 style={{ fontSize: '1.15rem', marginBottom: '8px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                    Deploying Cargo Escrow Vault
+                  </h3>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginBottom: '24px' }}>
+                    Initializing secure multi-sig smart contract ledger...
+                  </p>
+                  
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', textAlign: 'left', marginBottom: '24px' }}>
+                    {/* Step 1: Securing capital vault */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{
+                        width: '24px', height: '24px', borderRadius: '50%',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        background: getLoadingStepStatus(1) === 'completed' ? 'rgba(74, 222, 128, 0.1)' : getLoadingStepStatus(1) === 'active' ? 'rgba(0, 136, 255, 0.1)' : 'rgba(255, 255, 255, 0.05)',
+                        color: getLoadingStepStatus(1) === 'completed' ? '#4ade80' : getLoadingStepStatus(1) === 'active' ? 'var(--primary)' : 'var(--text-muted)',
+                        border: '1px solid',
+                        borderColor: getLoadingStepStatus(1) === 'completed' ? 'rgba(74, 222, 128, 0.3)' : getLoadingStepStatus(1) === 'active' ? 'var(--primary)' : 'var(--border)'
+                      }}>
+                        {getLoadingStepStatus(1) === 'completed' ? <Check size={14} /> : getLoadingStepStatus(1) === 'active' ? <Loader2 size={14} className="animate-spin" /> : <div style={{width: 6, height: 6, borderRadius: '50%', background: 'currentColor'}} />}
+                      </div>
+                      <span style={{ fontSize: '13px', fontWeight: getLoadingStepStatus(1) === 'active' ? 600 : 500, color: getLoadingStepStatus(1) === 'pending' ? 'var(--text-muted)' : 'var(--text-primary)' }}>
+                        Securing capital vault...
+                      </span>
+                    </div>
+                    
+                    {/* Step 2: Registering Cargo Twin NFT */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{
+                        width: '24px', height: '24px', borderRadius: '50%',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        background: getLoadingStepStatus(2) === 'completed' ? 'rgba(74, 222, 128, 0.1)' : getLoadingStepStatus(2) === 'active' ? 'rgba(0, 136, 255, 0.1)' : 'rgba(255, 255, 255, 0.05)',
+                        color: getLoadingStepStatus(2) === 'completed' ? '#4ade80' : getLoadingStepStatus(2) === 'active' ? 'var(--primary)' : 'var(--text-muted)',
+                        border: '1px solid',
+                        borderColor: getLoadingStepStatus(2) === 'completed' ? 'rgba(74, 222, 128, 0.3)' : getLoadingStepStatus(2) === 'active' ? 'var(--primary)' : 'var(--border)'
+                      }}>
+                        {getLoadingStepStatus(2) === 'completed' ? <Check size={14} /> : getLoadingStepStatus(2) === 'active' ? <Loader2 size={14} className="animate-spin" /> : <div style={{width: 6, height: 6, borderRadius: '50%', background: 'currentColor'}} />}
+                      </div>
+                      <span style={{ fontSize: '13px', fontWeight: getLoadingStepStatus(2) === 'active' ? 600 : 500, color: getLoadingStepStatus(2) === 'pending' ? 'var(--text-muted)' : 'var(--text-primary)' }}>
+                        Registering Cargo Twin NFT...
+                      </span>
+                    </div>
+
+                    {/* Step 3: Activating Telemetry Sensor */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <div style={{
+                        width: '24px', height: '24px', borderRadius: '50%',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        background: getLoadingStepStatus(3) === 'completed' ? 'rgba(74, 222, 128, 0.1)' : getLoadingStepStatus(3) === 'active' ? 'rgba(0, 136, 255, 0.1)' : 'rgba(255, 255, 255, 0.05)',
+                        color: getLoadingStepStatus(3) === 'completed' ? '#4ade80' : getLoadingStepStatus(3) === 'active' ? 'var(--primary)' : 'var(--text-muted)',
+                        border: '1px solid',
+                        borderColor: getLoadingStepStatus(3) === 'completed' ? 'rgba(74, 222, 128, 0.3)' : getLoadingStepStatus(3) === 'active' ? 'var(--primary)' : 'var(--border)'
+                      }}>
+                        {getLoadingStepStatus(3) === 'completed' ? <Check size={14} /> : getLoadingStepStatus(3) === 'active' ? <Loader2 size={14} className="animate-spin" /> : <div style={{width: 6, height: 6, borderRadius: '50%', background: 'currentColor'}} />}
+                      </div>
+                      <span style={{ fontSize: '13px', fontWeight: getLoadingStepStatus(3) === 'active' ? 600 : 500, color: getLoadingStepStatus(3) === 'pending' ? 'var(--text-muted)' : 'var(--text-primary)' }}>
+                        Activating Telemetry Sensor...
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Dev details dropdown */}
+                  <details style={{ width: '100%', textAlign: 'left', marginTop: '16px', borderTop: '1px solid var(--border)', paddingTop: '12px' }}>
+                    <summary style={{ fontSize: '11px', color: 'var(--text-muted)', cursor: 'pointer', outline: 'none' }}>Developer Details</summary>
+                    <div style={{ marginTop: '8px', padding: '10px', background: 'var(--bg-main)', border: '1px solid var(--border)', borderRadius: '6px', fontFamily: 'var(--font-mono)', fontSize: '10px', wordBreak: 'break-all', maxHeight: '100px', overflowY: 'auto' }}>
+                      <div>Status: {createProgress || 'Initializing transaction ledger...'}</div>
+                    </div>
+                  </details>
+                </div>
+              </div>
+            )}
+
+            {/* Modal Header */}
+            <div style={{
+              padding: '20px 24px',
+              borderBottom: '1px solid var(--border)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              background: 'rgba(255, 255, 255, 0.02)'
+            }}>
+              <div>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Sparkles size={18} style={{ color: 'var(--primary)' }} /> One-Click Voyage Booking
+                </h3>
+                <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: '4px 0 0' }}>
+                  Configure cargo identity, transit financials, and collateral parameters.
+                </p>
+              </div>
+              <button 
+                onClick={() => {
+                  setIsCreatingShipment(false);
+                  setWizardStep(1);
+                }} 
+                className="btn btn-secondary btn-icon" 
+                style={{ width: '28px', height: '28px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}
+              >
                 &times;
               </button>
             </div>
 
-            <form onSubmit={handleCreateShipment}>
-              
-              {/* Link PO Loan dropdown */}
-              <div className="form-group">
-                <label className="form-label">Link Pre-shipment PO Loan (Optional)</label>
-                <select 
-                  className="form-input"
-                  value={formData.poId}
-                  onChange={(e) => {
-                    const selectedPoId = e.target.value;
-                    if (selectedPoId === '') {
-                      setFormData({
-                        ...formData,
-                        poId: '',
-                        supplier: '0x8D92F677cd6303cEc089B5F319D72Aa797Da5300',
-                        cargoValue: '500',
-                        tokenType: 'USDC'
-                      });
-                    } else {
-                      const selectedPo = poLoans.find(p => p.id === parseInt(selectedPoId));
-                      if (selectedPo) {
-                        setFormData({
-                          ...formData,
-                          poId: selectedPoId,
-                          supplier: selectedPo.supplier,
-                          cargoValue: selectedPo.cargoValue.toString(),
-                          tokenType: selectedPo.token === EURC_ADDRESS ? 'EURC' : 'USDC'
-                        });
-                      }
-                    }
-                  }}
-                >
-                  <option value="">-- Do not link PO loan --</option>
-                  {poLoans.filter(p => p.funded && !p.repaid && p.buyer.toLowerCase() === (signerType === 'web3' && connectedAddress ? connectedAddress.toLowerCase() : wallet?.address?.toLowerCase())).map(p => (
-                    <option key={p.id} value={p.id}>
-                      PO #{p.id} (Supplier: {p.supplier.slice(0, 8)}..., Cargo Value: {p.cargoValue} {p.token === EURC_ADDRESS ? 'EURC' : 'USDC'})
-                    </option>
-                  ))}
-                </select>
-                <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>Linking automatically repays both loan principal and interest to the funder immediately when buyer deposits escrow.</span>
+            {/* Stepper Header */}
+            <div style={{
+              padding: '12px 24px',
+              background: 'rgba(0,0,0,0.05)',
+              borderBottom: '1px solid var(--border)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              fontSize: '11px',
+              fontWeight: 600
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: wizardStep === 1 ? 'var(--primary)' : 'var(--text-muted)' }}>
+                <span style={{ display: 'inline-flex', width: '18px', height: '18px', borderRadius: '50%', background: wizardStep === 1 ? 'var(--primary)' : 'var(--border)', color: wizardStep === 1 ? '#fff' : 'var(--text-muted)', alignItems: 'center', justifyContent: 'center', fontSize: '9px' }}>1</span>
+                Shipment Identity
               </div>
-
-              <div className="grid-cols-2">
-                <div className="form-group">
-                  <label className="form-label">Supplier Wallet Address (Receivable Beneficiary)</label>
-                  <input 
-                    className="form-input"
-                    value={formData.supplier}
-                    onChange={(e) => setFormData({...formData, supplier: e.target.value})}
-                    required
-                    disabled={formData.poId !== ''}
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Carrier Wallet Address (Logistics Partner)</label>
-                  <input 
-                    className="form-input"
-                    value={formData.carrier}
-                    onChange={(e) => setFormData({...formData, carrier: e.target.value})}
-                    required
-                  />
-                </div>
+              <div style={{ height: '1px', flex: 1, background: 'var(--border)', margin: '0 12px' }}></div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: wizardStep === 2 ? 'var(--primary)' : 'var(--text-muted)' }}>
+                <span style={{ display: 'inline-flex', width: '18px', height: '18px', borderRadius: '50%', background: wizardStep === 2 ? 'var(--primary)' : 'var(--border)', color: wizardStep === 2 ? '#fff' : 'var(--text-muted)', alignItems: 'center', justifyContent: 'center', fontSize: '9px' }}>2</span>
+                Financials & Yield
               </div>
-
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 120px', gap: '1rem' }}>
-                <div className="form-group">
-                  <label className="form-label">Goods / Cargo Value</label>
-                  <input 
-                    type="number"
-                    className="form-input"
-                    value={formData.cargoValue}
-                    onChange={(e) => setFormData({...formData, cargoValue: e.target.value})}
-                    required
-                    disabled={formData.poId !== ''}
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Shipping & Demurrage Escrow Fee</label>
-                  <input 
-                    type="number"
-                    className="form-input"
-                    value={formData.shippingFee}
-                    onChange={(e) => setFormData({...formData, shippingFee: e.target.value})}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Currency Token</label>
-                  <select 
-                    className="form-input"
-                    value={formData.tokenType}
-                    onChange={(e) => setFormData({...formData, tokenType: e.target.value as 'USDC' | 'EURC'})}
-                    disabled={formData.poId !== ''}
-                  >
-                    <option value="USDC">USDC</option>
-                    <option value="EURC">EURC</option>
-                  </select>
-                </div>
+              <div style={{ height: '1px', flex: 1, background: 'var(--border)', margin: '0 12px' }}></div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: wizardStep === 3 ? 'var(--primary)' : 'var(--text-muted)' }}>
+                <span style={{ display: 'inline-flex', width: '18px', height: '18px', borderRadius: '50%', background: wizardStep === 3 ? 'var(--primary)' : 'var(--border)', color: wizardStep === 3 ? '#fff' : 'var(--text-muted)', alignItems: 'center', justifyContent: 'center', fontSize: '9px' }}>3</span>
+                Linked PO & Confirm
               </div>
+            </div>
 
-              <div className="grid-cols-2">
-                <div className="form-group">
-                  <label className="form-label">Departure Port</label>
-                  <input 
-                    className="form-input"
-                    value={formData.departurePort}
-                    onChange={(e) => setFormData({...formData, departurePort: e.target.value})}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Destination Port</label>
-                  <input 
-                    className="form-input"
-                    value={formData.destinationPort}
-                    onChange={(e) => setFormData({...formData, destinationPort: e.target.value})}
-                    required
-                  />
-                </div>
-              </div>
+            {/* Modal Wizard Body */}
+            <div style={{ padding: '24px', flex: 1, overflowY: 'auto' }}>
+              <div style={{
+                display: 'flex',
+                width: '300%',
+                transform: `translateX(-${(wizardStep - 1) * 33.33}%)`,
+                transition: 'transform 300ms cubic-bezier(0.4, 0, 0.2, 1)'
+              }}>
+                {/* Step 1: Shipment Identity */}
+                <div style={{ width: '33.33%', flexShrink: 0, paddingRight: '12px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div className="grid-cols-2">
+                      <div className="form-group">
+                        <label className="form-label">Cargo Commodity Name</label>
+                        <input 
+                          className="form-input"
+                          placeholder="e.g. Frozen Food, Medical Supplies"
+                          value={formData.cargoName}
+                          onChange={(e) => setFormData({...formData, cargoName: e.target.value})}
+                          required
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Container Serial ID</label>
+                        <input 
+                          className="form-input"
+                          placeholder="e.g. MSKU-402941-0"
+                          value={formData.containerNumber}
+                          onChange={(e) => setFormData({...formData, containerNumber: e.target.value})}
+                          required
+                        />
+                      </div>
+                    </div>
 
-              <div className="grid-cols-2">
-                <div className="form-group">
-                  <label className="form-label">Allotted Discharge Window (Free Hours)</label>
-                  <input 
-                    type="number"
-                    className="form-input"
-                    value={formData.freeTimeHours}
-                    onChange={(e) => setFormData({...formData, freeTimeHours: e.target.value})}
-                    required
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Hourly Demurrage Penalty Rate</label>
-                  <input 
-                    type="number"
-                    className="form-input"
-                    value={formData.demurrageRatePerHour}
-                    onChange={(e) => setFormData({...formData, demurrageRatePerHour: e.target.value})}
-                    required
-                  />
-                </div>
-              </div>
+                    <div className="form-group">
+                      <label className="form-label">Carrier & Logistics Partner</label>
+                      <select 
+                        className="form-input"
+                        value={formData.carrier}
+                        onChange={(e) => setFormData({...formData, carrier: e.target.value})}
+                      >
+                        {CARRIERS.map(c => (
+                          <option key={c.address} value={c.address}>
+                            {c.name} ({c.address.slice(0, 10)}...)
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-              <div className="form-group" style={{ display: appMode === 'live' ? 'flex' : 'none', alignItems: 'center', gap: '0.5rem', marginTop: '0.75rem' }}>
-                <input 
-                  type="checkbox"
-                  id="cctpPending"
-                  checked={formData.cctpPending}
-                  onChange={(e) => setFormData({...formData, cctpPending: e.target.checked, useUnifiedBalance: false})}
-                  disabled={formData.poId !== ''}
-                  style={{ width: 'auto', cursor: 'pointer' }}
-                />
-                <label htmlFor="cctpPending" style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', cursor: 'pointer' }}>
-                  Enable CCTP Cross-Chain Funding (Deposit from Sepolia/Arbitrum)
-                </label>
-              </div>
+                    <div className="grid-cols-2">
+                      <div className="form-group">
+                        <label className="form-label">Port of Departure</label>
+                        <input 
+                          className="form-input"
+                          placeholder="Departure Terminal"
+                          value={formData.departurePort}
+                          onChange={(e) => setFormData({...formData, departurePort: e.target.value})}
+                          required
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Port of Destination</label>
+                        <input 
+                          className="form-input"
+                          placeholder="Arrival Gateway"
+                          value={formData.destinationPort}
+                          onChange={(e) => setFormData({...formData, destinationPort: e.target.value})}
+                          required
+                        />
+                      </div>
+                    </div>
 
-              <div className="form-group" style={{ display: appMode === 'live' ? 'block' : 'none', marginTop: '0.75rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
-                  <input 
-                    type="checkbox"
-                    id="useUnifiedBalance"
-                    checked={formData.useUnifiedBalance}
-                    onChange={(e) => setFormData({...formData, useUnifiedBalance: e.target.checked, cctpPending: false})}
-                    disabled={formData.poId !== '' || formData.tokenType === 'EURC'}
-                    style={{ width: 'auto', cursor: 'pointer' }}
-                  />
-                  <label htmlFor="useUnifiedBalance" style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)', cursor: 'pointer' }}>
-                    Fund Escrow with App Kit Unified Balance (USDC only)
-                  </label>
-                </div>
-                {formData.useUnifiedBalance && (
-                  <div style={{ paddingLeft: '1.25rem' }}>
-                    <label style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', display: 'block', marginBottom: '0.25rem' }}>Unified Balance Source Chain</label>
-                    <select
-                      className="form-input"
-                      style={{ padding: '0.35rem 0.5rem', fontSize: '0.75rem', width: '200px' }}
-                      value={formData.unifiedSourceChain}
-                      onChange={(e) => setFormData({...formData, unifiedSourceChain: e.target.value as 'Ethereum_Sepolia' | 'Arbitrum_Sepolia'})}
-                    >
-                      <option value="Ethereum_Sepolia">Ethereum Sepolia</option>
-                      <option value="Arbitrum_Sepolia">Arbitrum Sepolia</option>
-                    </select>
+                    <div className="form-group">
+                      <label className="form-label">Supplier Beneficiary Wallet Address</label>
+                      <input 
+                        className="form-input"
+                        placeholder="0x..."
+                        value={formData.supplier}
+                        onChange={(e) => setFormData({...formData, supplier: e.target.value})}
+                        required
+                        disabled={formData.poId !== ''}
+                      />
+                      {formData.poId !== '' && (
+                        <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>Locked by active pre-shipment PO loan contract.</span>
+                      )}
+                    </div>
                   </div>
+                </div>
+
+                {/* Step 2: Financials & Yield */}
+                <div style={{ width: '33.33%', flexShrink: 0, paddingRight: '12px', paddingLeft: '12px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 100px', gap: '12px' }}>
+                      <div className="form-group">
+                        <label className="form-label">Cargo Value</label>
+                        <input 
+                          type="number"
+                          step="any"
+                          className="form-input"
+                          value={formData.cargoValue}
+                          onChange={(e) => setFormData({...formData, cargoValue: e.target.value})}
+                          required
+                          disabled={formData.poId !== ''}
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Logistics Fee</label>
+                        <input 
+                          type="number"
+                          step="any"
+                          className="form-input"
+                          value={formData.shippingFee}
+                          onChange={(e) => setFormData({...formData, shippingFee: e.target.value})}
+                          required
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Currency</label>
+                        <select 
+                          className="form-input"
+                          value={formData.tokenType}
+                          onChange={(e) => setFormData({...formData, tokenType: e.target.value as 'USDC' | 'EURC'})}
+                          disabled={formData.poId !== ''}
+                        >
+                          <option value="USDC">USDC</option>
+                          <option value="EURC">EURC</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="grid-cols-2">
+                      <div className="form-group">
+                        <label className="form-label">Free Time (Hours)</label>
+                        <input 
+                          type="number"
+                          className="form-input"
+                          value={formData.freeTimeHours}
+                          onChange={(e) => setFormData({...formData, freeTimeHours: e.target.value})}
+                          required
+                        />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">Demurrage Rate/Hour</label>
+                        <input 
+                          type="number"
+                          className="form-input"
+                          value={formData.demurrageRatePerHour}
+                          onChange={(e) => setFormData({...formData, demurrageRatePerHour: e.target.value})}
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    {/* Integrated StableFX Converter */}
+                    <div style={{
+                      padding: '12px 14px',
+                      background: 'rgba(255, 255, 255, 0.02)',
+                      border: '1px dashed var(--border)',
+                      borderRadius: '8px'
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                        <span style={{ fontSize: '11px', fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <TrendingUp size={12} /> StableFX AED Dirham Converter
+                        </span>
+                        <span style={{ fontSize: '10px', color: 'var(--text-muted)' }}>
+                          Oracle: 1 AED = {formData.tokenType === 'EURC' ? aedToEurcRate.toFixed(4) : aedToUsdcRate.toFixed(4)} {formData.tokenType}
+                        </span>
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <input 
+                          type="number"
+                          placeholder="AED invoice amount"
+                          className="form-input"
+                          style={{ flex: 1, padding: '4px 8px', fontSize: '12px' }}
+                          value={stableFxInputAed}
+                          onChange={(e) => setStableFxInputAed(e.target.value)}
+                        />
+                        <button 
+                          type="button" 
+                          onClick={() => {
+                            const converted = parseFloat(stableFxInputAed) * (formData.tokenType === 'EURC' ? aedToEurcRate : aedToUsdcRate);
+                            setFormData({...formData, cargoValue: converted.toFixed(2)});
+                            showToast(`Applied converted AED value to ${formData.tokenType} value field.`, 'success');
+                          }}
+                          className="btn btn-secondary" 
+                          style={{ padding: '4px 10px', fontSize: '11px' }}
+                        >
+                          Convert & Apply
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Visual Yield Sweep Toggle */}
+                    <div style={{
+                      borderTop: '1px solid var(--border)',
+                      paddingTop: '12px',
+                      marginTop: '4px'
+                    }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <div>
+                          <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }} htmlFor="usycSweepToggle">
+                            <Shield size={14} style={{ color: '#4ade80' }} /> Sweep locked capital to yield vault
+                          </label>
+                          <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block', marginTop: '2px' }}>
+                            Earn ~5.2% APY in USYC during voyage transit
+                          </span>
+                        </div>
+                        <input 
+                          type="checkbox"
+                          id="usycSweepToggle"
+                          checked={formData.usycSweep}
+                          onChange={(e) => setFormData({...formData, usycSweep: e.target.checked})}
+                          style={{ width: '18px', height: '18px', cursor: 'pointer' }}
+                        />
+                      </div>
+                      
+                      {formData.usycSweep && (
+                        <div style={{
+                          background: 'rgba(74, 222, 128, 0.03)',
+                          border: '1px solid rgba(74, 222, 128, 0.15)',
+                          borderRadius: '8px',
+                          padding: '10px 12px',
+                          marginTop: '10px',
+                          display: 'flex',
+                          alignItems: 'flex-start',
+                          gap: '8px',
+                          animation: 'slideDown 0.2s ease-out'
+                        }}>
+                          <span style={{
+                            display: 'inline-block',
+                            width: '8px',
+                            height: '8px',
+                            borderRadius: '50%',
+                            background: '#4ade80',
+                            marginTop: '4px',
+                            boxShadow: '0 0 8px #4ade80'
+                          }} />
+                          <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.7)', lineHeight: '1.4' }}>
+                            <strong>USYC sweep active.</strong> Double-duty asset utilization enabled. Locked cash is collateralized into tokenized treasury bills, accruing real interest. Upon cargo customs clearance, net yield is automatically paid back.
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Step 3: Linked Purchase Order & Confirm */}
+                <div style={{ width: '33.33%', flexShrink: 0, paddingLeft: '12px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    {/* Linked PO Selector */}
+                    <div className="form-group">
+                      <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <Coins size={14} style={{ color: '#4ade80' }} /> Link Funded Purchase Order Loan (Optional)
+                      </label>
+                      <select 
+                        className="form-input"
+                        value={formData.poId}
+                        onChange={(e) => {
+                          const selectedPoId = e.target.value;
+                          if (selectedPoId === '') {
+                            setFormData({
+                              ...formData,
+                              poId: '',
+                              supplier: '0x8D92F677cd6303cEc089B5F319D72Aa797Da5300',
+                              cargoValue: '2.0',
+                              tokenType: 'USDC'
+                            });
+                          } else {
+                            const selectedPo = poLoans.find(p => p.id === parseInt(selectedPoId));
+                            if (selectedPo) {
+                              setFormData({
+                                ...formData,
+                                poId: selectedPoId,
+                                supplier: selectedPo.supplier,
+                                cargoValue: selectedPo.cargoValue.toString(),
+                                tokenType: selectedPo.token === EURC_ADDRESS ? 'EURC' : 'USDC'
+                              });
+                              showToast(`Linked PO Loan #${selectedPoId}. Counterparty and Value fields auto-populated.`, 'success');
+                            }
+                          }
+                        }}
+                      >
+                        <option value="">-- No Linked PO financing --</option>
+                        {poLoans.filter(p => p.funded && !p.repaid && p.buyer.toLowerCase() === (signerType === 'web3' && connectedAddress ? connectedAddress.toLowerCase() : wallet?.address?.toLowerCase())).map(p => (
+                          <option key={p.id} value={p.id}>
+                            PO #{p.id} (Supplier: {p.supplier.slice(0, 8)}..., Value: {p.cargoValue} {p.token === EURC_ADDRESS ? 'EURC' : 'USDC'})
+                          </option>
+                        ))}
+                      </select>
+                      <span style={{ fontSize: '10px', color: 'var(--text-muted)', display: 'block', marginTop: '4px' }}>
+                        Auto-repays loan principal and 5% flat interest to funder directly from deposit pool upon settlement.
+                      </span>
+                    </div>
+
+                    {/* Booking Voyage Summary Card */}
+                    <div style={{
+                      background: 'rgba(255,255,255,0.01)',
+                      border: '1px solid var(--border)',
+                      borderRadius: '10px',
+                      padding: '16px'
+                    }}>
+                      <h4 style={{ fontSize: '12px', fontWeight: 700, marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-primary)' }}>
+                        Voyage Summary Recap
+                      </h4>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '11px' }}>
+                        <div>
+                          <span style={{ color: 'var(--text-muted)' }}>Cargo Identity:</span>
+                          <div style={{ fontWeight: 600, marginTop: '2px' }}>{formData.cargoName}</div>
+                        </div>
+                        <div>
+                          <span style={{ color: 'var(--text-muted)' }}>Container Number:</span>
+                          <div style={{ fontWeight: 600, marginTop: '2px' }}>{formData.containerNumber}</div>
+                        </div>
+                        <div>
+                          <span style={{ color: 'var(--text-muted)' }}>Trade Route:</span>
+                          <div style={{ fontWeight: 600, marginTop: '2px' }}>{formData.departurePort} &rarr; {formData.destinationPort}</div>
+                        </div>
+                        <div>
+                          <span style={{ color: 'var(--text-muted)' }}>Carrier Agent:</span>
+                          <div style={{ fontWeight: 600, marginTop: '2px' }}>
+                            {CARRIERS.find(c => c.address === formData.carrier)?.name || 'Custom Carrier'}
+                          </div>
+                        </div>
+                        <div>
+                          <span style={{ color: 'var(--text-muted)' }}>Total Secured deposit:</span>
+                          <div style={{ fontWeight: 700, color: 'var(--primary)', marginTop: '2px', fontSize: '12px' }}>
+                            {(parseFloat(formData.cargoValue) + parseFloat(formData.shippingFee)).toFixed(2)} {formData.tokenType}
+                          </div>
+                        </div>
+                        <div>
+                          <span style={{ color: 'var(--text-muted)' }}>Yield Sweeping status:</span>
+                          <div style={{ fontWeight: 600, color: formData.usycSweep ? '#4ade80' : 'var(--text-muted)', marginTop: '2px' }}>
+                            {formData.usycSweep ? 'USYC Yield Sweep Active (5.2%)' : 'Disabled'}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Live Mode Network Options */}
+                    {appMode === 'live' && (
+                      <div style={{
+                        background: 'rgba(0,0,0,0.1)',
+                        border: '1px solid var(--border)',
+                        borderRadius: '8px',
+                        padding: '12px'
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <input 
+                            type="checkbox"
+                            id="cctpPending"
+                            checked={formData.cctpPending}
+                            onChange={(e) => setFormData({...formData, cctpPending: e.target.checked, useUnifiedBalance: false})}
+                            disabled={formData.poId !== ''}
+                            style={{ cursor: 'pointer' }}
+                          />
+                          <label htmlFor="cctpPending" style={{ fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}>
+                            CCTP Cross-Chain Funding (Deposit from Sepolia/Arbitrum)
+                          </label>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px' }}>
+                          <input 
+                            type="checkbox"
+                            id="useUnifiedBalance"
+                            checked={formData.useUnifiedBalance}
+                            onChange={(e) => setFormData({...formData, useUnifiedBalance: e.target.checked, cctpPending: false})}
+                            disabled={formData.poId !== '' || formData.tokenType === 'EURC'}
+                            style={{ cursor: 'pointer' }}
+                          />
+                          <label htmlFor="useUnifiedBalance" style={{ fontSize: '11px', fontWeight: 600, cursor: 'pointer' }}>
+                            Fund Escrow with App Kit Unified Balance (USDC only)
+                          </label>
+                        </div>
+                        
+                        {formData.useUnifiedBalance && (
+                          <div style={{ paddingLeft: '20px', marginTop: '6px' }}>
+                            <select
+                              className="form-input"
+                              style={{ padding: '4px 8px', fontSize: '11px', width: '100%' }}
+                              value={formData.unifiedSourceChain}
+                              onChange={(e) => setFormData({...formData, unifiedSourceChain: e.target.value as any})}
+                            >
+                              <option value="Ethereum_Sepolia">Ethereum Sepolia</option>
+                              <option value="Arbitrum_Sepolia">Arbitrum Sepolia</option>
+                            </select>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Wizard Footer Controls */}
+            <div style={{
+              padding: '16px 24px',
+              borderTop: '1px solid var(--border)',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              background: 'rgba(255, 255, 255, 0.02)'
+            }}>
+              <div>
+                {wizardStep > 1 ? (
+                  <button 
+                    type="button" 
+                    onClick={() => setWizardStep(prev => prev - 1)} 
+                    className="btn btn-secondary"
+                    style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
+                  >
+                    <ChevronLeft size={14} /> Back
+                  </button>
+                ) : (
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      setIsCreatingShipment(false);
+                      setWizardStep(1);
+                    }} 
+                    className="btn btn-secondary"
+                  >
+                    Cancel
+                  </button>
                 )}
               </div>
 
-              <div style={{ marginTop: '1.25rem', display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
-                <button type="button" onClick={() => setIsCreatingShipment(false)} className="btn btn-secondary">
-                  Cancel
-                </button>
-                <button type="submit" disabled={loading} className="btn btn-primary">
-                  {loading ? (
-                    <>
-                      <Loader2 size={16} className="animate-spin-slow" /> {createProgress}
-                    </>
-                  ) : (
-                    <>
-                      <Landmark size={16} /> Lock Collateral & Open Escrow Vault
-                    </>
-                  )}
-                </button>
+              <div>
+                {wizardStep < 3 ? (
+                  <button 
+                    type="button" 
+                    onClick={() => {
+                      if (wizardStep === 1) {
+                        if (!formData.cargoName.trim() || !formData.containerNumber.trim() || !formData.supplier.trim() || !formData.departurePort.trim() || !formData.destinationPort.trim()) {
+                          showToast('Please fill out all identity and route fields.', 'warning');
+                          return;
+                        }
+                      }
+                      setWizardStep(prev => prev + 1);
+                    }} 
+                    className="btn btn-primary"
+                    style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
+                  >
+                    Next <ChevronRight size={14} />
+                  </button>
+                ) : (
+                  <button 
+                    type="button" 
+                    onClick={handleCreateShipment} 
+                    disabled={loading} 
+                    className="btn btn-primary"
+                    style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                  >
+                    <Landmark size={14} /> Lock Collateral & Open Escrow
+                  </button>
+                )}
               </div>
-            </form>
+            </div>
+
           </div>
-
-          {/* StableFX Live Oracle Converter Widget */}
-          <div className="glass-panel" style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem', height: 'fit-content' }}>
-            <h3 style={{ fontSize: '0.95rem', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--secondary)' }}>
-              <TrendingUp size={16} /> StableFX Real-Time Oracle Converter
-            </h3>
-            <p style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-              Instantly convert regional cargo invoices (e.g. AED Dirham) into digital dollar equivalents.
-            </p>
-
-            <div style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', borderRadius: '8px', padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>EURC / USDC Oracle Rate:</span>
-                <strong>{eurcToUsdcRate.toFixed(4)} USDC</strong>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>AED / USDC Oracle Rate:</span>
-                <strong>{aedToUsdcRate.toFixed(4)} USDC</strong>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span>AED / EURC Oracle Rate:</span>
-                <strong>{aedToEurcRate.toFixed(4)} EURC</strong>
-              </div>
-            </div>
-
-            <div className="form-group" style={{ margin: 0 }}>
-              <label className="form-label">Port Invoice Value (AED)</label>
-              <div style={{ display: 'flex', gap: '0.5rem' }}>
-                <input 
-                  type="number" 
-                  className="form-input" 
-                  style={{ flex: 1, padding: '0.5rem', fontSize: '0.85rem' }} 
-                  value={stableFxInputAed}
-                  onChange={(e) => setStableFxInputAed(e.target.value)}
-                />
-                <span className="badge badge-muted" style={{ display: 'flex', alignItems: 'center' }}>AED</span>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', fontSize: '0.8rem', background: 'rgba(0,0,0,0.2)', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span>Digital Equivalent:</span>
-                <strong style={{ color: 'var(--primary)' }}>{convertedUsdc.toFixed(2)} USDC</strong>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span>Digital Equivalent:</span>
-                <strong style={{ color: 'var(--success)' }}>{convertedEurc.toFixed(2)} EURC</strong>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button 
-                onClick={() => {
-                  setFormData({
-                    ...formData,
-                    cargoValue: convertedUsdc.toFixed(2),
-                    tokenType: 'USDC'
-                  });
-                  showToast('Applied converted value to USDC field.', 'success');
-                }}
-                className="btn btn-secondary" 
-                style={{ flex: 1, padding: '0.45rem', fontSize: '0.7rem' }}
-              >
-                Apply USDC
-              </button>
-              <button 
-                onClick={() => {
-                  setFormData({
-                    ...formData,
-                    cargoValue: convertedEurc.toFixed(2),
-                    tokenType: 'EURC'
-                  });
-                  showToast('Applied converted value to EURC field.', 'success');
-                }}
-                className="btn btn-secondary" 
-                style={{ flex: 1, padding: '0.45rem', fontSize: '0.7rem' }}
-              >
-                Apply EURC
-              </button>
-            </div>
-          </div>
-
         </div>
       )}
 
